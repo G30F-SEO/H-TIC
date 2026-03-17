@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getCampaigns, updateCampaign, addHistoryEntry } from '@/lib/db'
+import { getCampaigns, updateLine, addHistoryEntry } from '@/lib/db'
 import { getWebhookUrl } from '@/lib/webhooks'
 import { logger } from '@/lib/logger'
 
-// This endpoint is called by Vercel Cron Jobs
+// This endpoint is called by Vercel Cron Jobs or auto-mode
 // Secured by CRON_SECRET env var
 export async function GET(request) {
-  // Verify cron secret
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
@@ -14,49 +13,67 @@ export async function GET(request) {
   }
 
   const campaigns = getCampaigns()
-  const next = campaigns.find(c => c.status === 'queued')
 
-  if (!next) {
-    logger.info('Cron: aucune campagne en file')
+  // Find next queued line across all campaigns
+  let targetCampaign = null
+  let targetLine = null
+  for (const camp of campaigns) {
+    const line = (camp.lines || []).find(l => l.status === 'queued')
+    if (line) {
+      targetCampaign = camp
+      targetLine = line
+      break
+    }
+  }
+
+  if (!targetCampaign || !targetLine) {
+    logger.info('Cron: aucune ligne en file')
     return NextResponse.json({ message: 'no_queued', launched: 0 })
   }
 
-  // Launch next queued campaign
-  const webhookUrl = getWebhookUrl(next.branch)
+  const webhookUrl = getWebhookUrl(targetCampaign.branch)
   if (!webhookUrl) {
-    const error = `Webhook non configure pour "${next.branch}"`
-    updateCampaign(next.id, { status: 'error', error })
-    logger.error(`Cron: ${error}`, { campaignId: next.id })
+    const error = `Webhook non configure pour "${targetCampaign.branch}"`
+    updateLine(targetCampaign.id, targetLine.id, { status: 'error', error })
+    logger.error(`Cron: ${error}`, { campaignId: targetCampaign.id, lineId: targetLine.id })
     return NextResponse.json({ error, launched: 0 })
   }
 
   const payload = {
-    branch: next.branch,
-    company: next.company,
-    url: next.url,
-    city: next.city,
-    sector: next.sector || '',
-    keyword_main: next.keyword_main,
-    keywords_secondary: next.keywords_sec || '',
-    intent: next.intent || '',
-    h1: next.h1 || '',
-    word_count: next.word_count || '1200',
-    tone: next.tone || 'expert',
-    language: next.lang || 'fr',
-    extra_instructions: next.extra || '',
-    product_name: next.product_name || '',
-    product_price: next.product_price || '',
-    product_ref: next.product_ref || '',
-    cat_product: next.cat_product || '',
-    cat_ref: next.cat_ref || '',
-    cat_specs: next.cat_specs || '',
+    branch: targetCampaign.branch,
+    company: targetCampaign.name,
+    sector: targetCampaign.sector || '',
+    description: targetCampaign.description || '',
+    word_count: targetCampaign.word_count || '1200',
+    tone: targetCampaign.tone || 'expert',
+    language: targetCampaign.lang || 'fr',
+    url: targetLine.url,
+    city: targetLine.city || '',
+    keyword_main: targetLine.keyword_main,
+    keywords_secondary: targetLine.keywords_sec || '',
+    intent: targetLine.intent || '',
+    h1: targetLine.h1 || '',
+    extra_instructions: targetLine.extra || '',
+    product_name: targetLine.product_name || '',
+    product_price: targetLine.product_price || '',
+    product_ref: targetLine.product_ref || '',
+    cat_product: targetLine.cat_product || '',
+    cat_ref: targetLine.cat_ref || '',
+    cat_specs: targetLine.cat_specs || '',
     source: 'H-TIC-Launcher-Cron',
-    campaignId: next.id,
+    campaignId: targetCampaign.id,
+    lineId: targetLine.id,
     sentAt: new Date().toISOString(),
   }
 
+  // Merge campaign info
+  const info = targetCampaign.info || {}
+  for (const [k, v] of Object.entries(info)) {
+    if (v) payload[k] = v
+  }
+
   try {
-    updateCampaign(next.id, { status: 'processing' })
+    updateLine(targetCampaign.id, targetLine.id, { status: 'processing' })
     const res = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,20 +82,20 @@ export async function GET(request) {
 
     const now = new Date().toISOString()
     if (res.ok) {
-      updateCampaign(next.id, { status: 'done', launchedAt: now, completedAt: now, makeStatus: res.status })
-      addHistoryEntry({ branch: next.branch, company: next.company, keyword_main: next.keyword_main, url: next.url, status: 'sent', makeStatus: res.status, payload, campaignId: next.id })
-      logger.success(`Cron: "${next.company}" lance (${next.branch})`, { campaignId: next.id })
-      return NextResponse.json({ ok: true, launched: 1, company: next.company })
+      updateLine(targetCampaign.id, targetLine.id, { status: 'done', launchedAt: now, completedAt: now, makeStatus: res.status })
+      addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'sent', makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
+      logger.success(`Cron: "${targetLine.keyword_main}" lance (${targetCampaign.name})`, { campaignId: targetCampaign.id, lineId: targetLine.id })
+      return NextResponse.json({ ok: true, launched: 1, company: targetCampaign.name, keyword: targetLine.keyword_main })
     } else {
       const error = `HTTP ${res.status}`
-      updateCampaign(next.id, { status: 'error', error, completedAt: now, makeStatus: res.status })
-      addHistoryEntry({ branch: next.branch, company: next.company, keyword_main: next.keyword_main, url: next.url, status: 'error', error, makeStatus: res.status, payload, campaignId: next.id })
-      logger.error(`Cron: echec "${next.company}": ${error}`, { campaignId: next.id })
+      updateLine(targetCampaign.id, targetLine.id, { status: 'error', error, completedAt: now, makeStatus: res.status })
+      addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'error', error, makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
+      logger.error(`Cron: echec "${targetLine.keyword_main}": ${error}`, { campaignId: targetCampaign.id, lineId: targetLine.id })
       return NextResponse.json({ error, launched: 0 })
     }
   } catch (err) {
-    updateCampaign(next.id, { status: 'error', error: err.message, completedAt: new Date().toISOString() })
-    logger.error(`Cron: erreur reseau "${next.company}": ${err.message}`, { campaignId: next.id })
+    updateLine(targetCampaign.id, targetLine.id, { status: 'error', error: err.message, completedAt: new Date().toISOString() })
+    logger.error(`Cron: erreur reseau "${targetLine.keyword_main}": ${err.message}`, { campaignId: targetCampaign.id, lineId: targetLine.id })
     return NextResponse.json({ error: err.message, launched: 0 })
   }
 }

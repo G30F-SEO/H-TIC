@@ -24,38 +24,27 @@ const STATUS_MAP = {
 }
 
 const EMPTY_INFO = {
-  context: '', b2b_target: '', b2b_offer: '', b2b_value: '',
+  context: '', extra_info: '',
+  b2b_target: '', b2b_offer: '', b2b_value: '',
   b2c_target: '', b2c_experience: '', b2c_ambiance: '',
   personas: '', services: '',
   geo_location: '', geo_zone: '', geo_environment: '',
   style_approach: '', style_relation: '', style_objective: '',
   style_vocabulary: '', style_promises: '', style_structure: '',
   style_storytelling: '', style_engagement: '', style_verb_tense: '',
-  reviews: '', extra_info: '',
+  reviews: '',
 }
 
-const EMPTY_SEO = {
-  category_title: '', h2_plan: '', status: '', links: '',
-  catalogue_id: '', categories: '', location: '',
-  keywords_data: '', serp_analysis: '', brief_seo: '',
-  article_intro: '', article_part1: '', article_part2: '',
-  article_part3: '', article_part4: '', article_part5: '',
-  faq_html: '', image_prompts: '',
-}
-
-const EMPTY_ROW = {
-  branch: 'vitrine', company: '', url: '', city: '', sector: '',
-  keyword_main: '', keywords_sec: '', intent: '', h1: '',
-  word_count: '1200', tone: 'expert', lang: 'fr', extra: '',
+const EMPTY_LINE = {
+  url: '', city: '', keyword_main: '', keywords_sec: '',
+  intent: '', h1: '', extra: '',
   product_name: '', product_price: '', product_ref: '',
   cat_product: '', cat_ref: '', cat_specs: '',
 }
 
-const EDIT_TABS = [
-  { id: 'base', label: 'Base' },
+const INFO_TABS = [
   { id: 'info', label: 'Information' },
-  { id: 'seo', label: 'SEO & Contenu' },
-  { id: 'import', label: 'Import' },
+  { id: 'import', label: 'Import JSON' },
 ]
 
 function StatusBadge({ status }) {
@@ -64,8 +53,7 @@ function StatusBadge({ status }) {
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: '4px',
       fontSize: '11px', fontWeight: '500', padding: '3px 8px',
-      borderRadius: '20px', background: s.bg, color: s.color,
-      whiteSpace: 'nowrap',
+      borderRadius: '20px', background: s.bg, color: s.color, whiteSpace: 'nowrap',
     }}>
       {status === 'processing' && (
         <svg className="spin" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -77,107 +65,259 @@ function StatusBadge({ status }) {
   )
 }
 
-export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState([])
-  const [loading, setLoading] = useState(true)
+// =====================
+// PHASE 1: Campaign list
+// =====================
+function CampaignList({ campaigns, onSelect, onCreateNew, loading }) {
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Chargement...</div>
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '4px' }}>Campagnes</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+            Creez une campagne, definissez la base de redaction, puis ajoutez vos lignes.
+          </p>
+        </div>
+        <button onClick={onCreateNew} className="btn btn-primary btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nouvelle campagne
+        </button>
+      </div>
+
+      {campaigns.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Aucune campagne. Creez votre premiere.</p>
+          <button onClick={onCreateNew} className="btn btn-primary">Creer une campagne</button>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {campaigns.map(camp => {
+            const branchInfo = BRANCHES.find(b => b.id === camp.branch) || BRANCHES[0]
+            const lineCount = (camp.lines || []).length
+            const doneCount = (camp.lines || []).filter(l => l.status === 'done').length
+            const errorCount = (camp.lines || []).filter(l => l.status === 'error').length
+            const queuedCount = (camp.lines || []).filter(l => l.status === 'queued').length
+            const infoFilled = Object.values(camp.info || {}).filter(Boolean).length
+
+            return (
+              <div
+                key={camp.id}
+                className="card"
+                onClick={() => onSelect(camp)}
+                style={{ cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s' }}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = ''}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '22px' }}>{branchInfo.icon}</span>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                        {camp.name || 'Sans nom'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {branchInfo.label} · {camp.sector || '—'} · {lineCount} ligne{lineCount !== 1 ? 's' : ''}
+                        {infoFilled > 0 && <span style={{ color: 'var(--accent)' }}> · {infoFilled} champs info</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {doneCount > 0 && <span className="badge badge-green">{doneCount} OK</span>}
+                    {queuedCount > 0 && <span className="badge badge-amber">{queuedCount} en file</span>}
+                    {errorCount > 0 && <span className="badge badge-danger">{errorCount} err</span>}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==================================
+// PHASE 2: Campaign detail (info + lines)
+// ==================================
+function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert }) {
+  const [campaign, setCampaign] = useState(initialCampaign)
+  const [phase, setPhase] = useState('info') // 'info' or 'lines'
+  const [infoTab, setInfoTab] = useState('info')
+  const [info, setInfo] = useState({ ...EMPTY_INFO, ...(initialCampaign.info || {}) })
+  const [meta, setMeta] = useState({
+    name: initialCampaign.name || '',
+    branch: initialCampaign.branch || 'vitrine',
+    sector: initialCampaign.sector || '',
+    tone: initialCampaign.tone || 'expert',
+    word_count: initialCampaign.word_count || '1200',
+    lang: initialCampaign.lang || 'fr',
+    description: initialCampaign.description || '',
+  })
+  const [importText, setImportText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [lines, setLines] = useState(initialCampaign.lines || [])
   const [selected, setSelected] = useState(new Set())
+  const [editLine, setEditLine] = useState(null)
+  const [editForm, setEditForm] = useState(EMPTY_LINE)
   const [launching, setLaunching] = useState(false)
   const [autoMode, setAutoMode] = useState(false)
   const [autoInterval, setAutoInterval] = useState(15)
-  const [alert, setAlert] = useState(null)
-  const [editRow, setEditRow] = useState(null)
-  const [editForm, setEditForm] = useState(EMPTY_ROW)
-  const [editInfo, setEditInfo] = useState({ ...EMPTY_INFO })
-  const [editSeo, setEditSeo] = useState({ ...EMPTY_SEO })
-  const [editTab, setEditTab] = useState('base')
-  const [importText, setImportText] = useState('')
   const autoRef = useRef(null)
 
-  function showAlert(msg, type = 'success') {
-    setAlert({ msg, type })
-    setTimeout(() => setAlert(null), 5000)
-  }
+  const handleI = (k) => (e) => setInfo(f => ({ ...f, [k]: e.target.value }))
+  const handleM = (k) => (e) => setMeta(f => ({ ...f, [k]: e.target.value }))
 
-  // Load campaigns
-  async function loadCampaigns() {
-    try {
-      const res = await fetch('/api/campaigns')
-      const data = await res.json()
-      setCampaigns(Array.isArray(data) ? data : [])
-    } catch { setCampaigns([]) }
-    finally { setLoading(false) }
-  }
-
-  useEffect(() => { loadCampaigns() }, [])
-
-  // Add new row
-  async function addRow() {
+  // Save campaign info
+  async function saveInfo() {
+    setSaving(true)
     try {
       const res = await fetch('/api/campaigns', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(EMPTY_ROW),
+        body: JSON.stringify({ id: campaign.id, ...meta, info }),
       })
-      const data = await res.json()
-      setCampaigns(prev => [...prev, data])
-      setEditRow(data.id)
-      setEditForm(EMPTY_ROW)
+      const updated = await res.json()
+      setCampaign(updated)
+      onUpdate(updated)
+      showAlert('Base de redaction sauvegardee')
     } catch {
-      showAlert('Erreur lors de l\'ajout', 'error')
+      showAlert('Erreur sauvegarde', 'error')
+    } finally {
+      setSaving(false)
     }
   }
 
-  // Save row
-  async function saveRow(id) {
+  // Import JSON
+  function handleImport() {
+    if (!importText.trim()) return
     try {
-      const data = { id, ...editForm, info: editInfo, seo: editSeo }
-      await fetch('/api/campaigns', {
+      const parsed = JSON.parse(importText)
+      if (typeof parsed !== 'object' || parsed === null) throw new Error()
+
+      // Map meta fields
+      const metaKeys = ['name', 'branch', 'sector', 'tone', 'word_count', 'lang', 'description']
+      const altKeys = { company: 'name' }
+      const newMeta = { ...meta }
+      for (const [k, v] of Object.entries(parsed)) {
+        const mapped = altKeys[k] || k
+        if (metaKeys.includes(mapped) && v) newMeta[mapped] = v
+      }
+      setMeta(newMeta)
+
+      // Map info fields
+      const infoSrc = parsed.info || parsed
+      const newInfo = { ...info }
+      for (const k of Object.keys(EMPTY_INFO)) {
+        if (infoSrc[k]) newInfo[k] = infoSrc[k]
+      }
+      setInfo(newInfo)
+
+      // Import lines if present
+      if (Array.isArray(parsed.lines)) {
+        showAlert(`Import reussi — ${Object.values(newInfo).filter(Boolean).length} champs info + ${parsed.lines.length} lignes detectees`)
+      } else {
+        showAlert(`Import reussi — ${Object.values(newInfo).filter(Boolean).length} champs info detectes`)
+      }
+    } catch {
+      showAlert('JSON invalide', 'error')
+    }
+  }
+
+  // --- Lines management ---
+  async function addNewLine() {
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/lines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(EMPTY_LINE),
+      })
+      const line = await res.json()
+      setLines(prev => [...prev, line])
+      startEditLine(line)
+    } catch {
+      showAlert('Erreur ajout ligne', 'error')
+    }
+  }
+
+  function startEditLine(line) {
+    setEditLine(line.id)
+    setEditForm({
+      url: line.url || '', city: line.city || '', keyword_main: line.keyword_main || '',
+      keywords_sec: line.keywords_sec || '', intent: line.intent || '', h1: line.h1 || '',
+      extra: line.extra || '',
+      product_name: line.product_name || '', product_price: line.product_price || '', product_ref: line.product_ref || '',
+      cat_product: line.cat_product || '', cat_ref: line.cat_ref || '', cat_specs: line.cat_specs || '',
+    })
+  }
+
+  async function saveLine(lineId) {
+    try {
+      await fetch(`/api/campaigns/${campaign.id}/lines`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ lineId, ...editForm }),
       })
-      setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...editForm, info: editInfo, seo: editSeo } : c))
-      setEditRow(null)
+      setLines(prev => prev.map(l => l.id === lineId ? { ...l, ...editForm } : l))
+      setEditLine(null)
     } catch {
       showAlert('Erreur sauvegarde', 'error')
     }
   }
 
-  // Delete selected
-  async function deleteSelected() {
+  async function deleteSelectedLines() {
     if (!confirm(`Supprimer ${selected.size} ligne(s) ?`)) return
     const ids = [...selected]
     try {
-      await fetch('/api/campaigns', {
+      await fetch(`/api/campaigns/${campaign.id}/lines`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ lineIds: ids }),
       })
-      setCampaigns(prev => prev.filter(c => !ids.includes(c.id)))
+      setLines(prev => prev.filter(l => !ids.includes(l.id)))
       setSelected(new Set())
     } catch {
       showAlert('Erreur suppression', 'error')
     }
   }
 
-  // Launch single row
-  async function launchRow(id) {
+  async function queueSelectedLines() {
+    const ids = [...selected]
+    for (const id of ids) {
+      await fetch(`/api/campaigns/${campaign.id}/lines`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineId: id, status: 'queued' }),
+      })
+    }
+    setLines(prev => prev.map(l => ids.includes(l.id) && (l.status === 'draft' || l.status === 'error') ? { ...l, status: 'queued' } : l))
+    setSelected(new Set())
+    showAlert(`${ids.length} ligne(s) mises en file`)
+  }
+
+  async function launchLine(lineId) {
     setLaunching(true)
     try {
       const res = await fetch('/api/campaigns/launch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: [id] }),
+        body: JSON.stringify({ campaignId: campaign.id, lineIds: [lineId] }),
       })
       const data = await res.json()
       if (data.results) {
-        setCampaigns(prev => prev.map(c => {
-          const result = data.results.find(r => r.id === c.id)
-          return result ? { ...c, status: result.status, error: result.error, launchedAt: result.launchedAt, completedAt: result.completedAt } : c
+        setLines(prev => prev.map(l => {
+          const r = data.results.find(x => x.id === l.id)
+          return r ? { ...l, status: r.status, error: r.error } : l
         }))
         const r = data.results[0]
-        if (r.status === 'done') showAlert(`"${campaigns.find(c => c.id === id)?.company}" lance avec succes`)
-        else showAlert(`Erreur: ${r.error}`, 'error')
+        if (r?.status === 'done') showAlert('Ligne lancee avec succes')
+        else showAlert(`Erreur: ${r?.error}`, 'error')
       }
     } catch {
       showAlert('Erreur lancement', 'error')
@@ -186,25 +326,21 @@ export default function CampaignsPage() {
     }
   }
 
-  // Launch all queued
   async function launchQueued() {
-    const queuedIds = campaigns.filter(c => c.status === 'queued').map(c => c.id)
-    if (queuedIds.length === 0) {
-      showAlert('Aucune campagne en file d\'attente', 'error')
-      return
-    }
+    const queuedIds = lines.filter(l => l.status === 'queued').map(l => l.id)
+    if (!queuedIds.length) { showAlert('Aucune ligne en file', 'error'); return }
     setLaunching(true)
     try {
       const res = await fetch('/api/campaigns/launch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: queuedIds }),
+        body: JSON.stringify({ campaignId: campaign.id, lineIds: queuedIds }),
       })
       const data = await res.json()
       if (data.results) {
-        setCampaigns(prev => prev.map(c => {
-          const result = data.results.find(r => r.id === c.id)
-          return result ? { ...c, ...result } : c
+        setLines(prev => prev.map(l => {
+          const r = data.results.find(x => x.id === l.id)
+          return r ? { ...l, status: r.status, error: r.error } : l
         }))
         const ok = data.results.filter(r => r.status === 'done').length
         const err = data.results.filter(r => r.status === 'error').length
@@ -217,26 +353,7 @@ export default function CampaignsPage() {
     }
   }
 
-  // Queue selected
-  async function queueSelected() {
-    const ids = [...selected]
-    try {
-      for (const id of ids) {
-        await fetch('/api/campaigns', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, status: 'queued' }),
-        })
-      }
-      setCampaigns(prev => prev.map(c => ids.includes(c.id) && (c.status === 'draft' || c.status === 'error') ? { ...c, status: 'queued' } : c))
-      setSelected(new Set())
-      showAlert(`${ids.length} campagne(s) mises en file d'attente`)
-    } catch {
-      showAlert('Erreur', 'error')
-    }
-  }
-
-  // Auto-launch mode
+  // Auto mode
   function toggleAutoMode() {
     if (autoMode) {
       clearInterval(autoRef.current)
@@ -245,14 +362,13 @@ export default function CampaignsPage() {
       showAlert('Mode automatique desactive')
     } else {
       setAutoMode(true)
-      showAlert(`Mode automatique active : 1 lancement toutes les ${autoInterval} min`)
+      showAlert(`Mode auto: 1 lancement / ${autoInterval} min`)
       autoLaunchNext()
       autoRef.current = setInterval(autoLaunchNext, autoInterval * 60 * 1000)
     }
   }
 
   async function autoLaunchNext() {
-    // Reload fresh data then launch next queued
     try {
       const res = await fetch('/api/campaigns/launch', {
         method: 'POST',
@@ -261,310 +377,364 @@ export default function CampaignsPage() {
       })
       const data = await res.json()
       if (data.result) {
-        setCampaigns(prev => prev.map(c =>
-          c.id === data.result.id ? { ...c, ...data.result } : c
-        ))
-        if (data.result.status === 'done') {
-          showAlert(`Auto: "${data.result.company}" lance avec succes`)
-        } else if (data.result.status === 'error') {
-          showAlert(`Auto: erreur pour "${data.result.company}"`, 'error')
-        }
+        // Reload lines
+        const linesRes = await fetch(`/api/campaigns/${campaign.id}/lines`)
+        const freshLines = await linesRes.json()
+        setLines(freshLines)
+        if (data.result.status === 'done') showAlert(`Auto: "${data.result.keyword_main}" lance`)
+        else if (data.result.status === 'error') showAlert(`Auto: erreur "${data.result.keyword_main}"`, 'error')
       } else if (data.message === 'no_queued') {
-        showAlert('Auto: plus de campagnes en file, arret du mode auto')
+        showAlert('Auto: plus de lignes en file')
         clearInterval(autoRef.current)
         setAutoMode(false)
       }
     } catch {
       showAlert('Auto: erreur reseau', 'error')
     }
-    // Reload
-    loadCampaigns()
   }
 
-  // Cleanup
   useEffect(() => {
     return () => { if (autoRef.current) clearInterval(autoRef.current) }
   }, [])
 
-  // Toggle select
   function toggleSelect(id) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
-
   function toggleSelectAll() {
-    if (selected.size === campaigns.length) {
-      setSelected(new Set())
-    } else {
-      setSelected(new Set(campaigns.map(c => c.id)))
-    }
-  }
-
-  // Start editing a row
-  function startEdit(campaign) {
-    setEditRow(campaign.id)
-    setEditTab('base')
-    setImportText('')
-    setEditForm({
-      branch: campaign.branch || 'vitrine',
-      company: campaign.company || '',
-      url: campaign.url || '',
-      city: campaign.city || '',
-      sector: campaign.sector || '',
-      keyword_main: campaign.keyword_main || '',
-      keywords_sec: campaign.keywords_sec || '',
-      intent: campaign.intent || '',
-      h1: campaign.h1 || '',
-      word_count: campaign.word_count || '1200',
-      tone: campaign.tone || 'expert',
-      lang: campaign.lang || 'fr',
-      extra: campaign.extra || '',
-      product_name: campaign.product_name || '',
-      product_price: campaign.product_price || '',
-      product_ref: campaign.product_ref || '',
-      cat_product: campaign.cat_product || '',
-      cat_ref: campaign.cat_ref || '',
-      cat_specs: campaign.cat_specs || '',
-    })
-    // Load info sub-object
-    const ci = campaign.info || {}
-    const loadedInfo = { ...EMPTY_INFO }
-    for (const k of Object.keys(EMPTY_INFO)) {
-      if (ci[k]) loadedInfo[k] = ci[k]
-    }
-    setEditInfo(loadedInfo)
-    // Load seo sub-object
-    const cs = campaign.seo || {}
-    const loadedSeo = { ...EMPTY_SEO }
-    for (const k of Object.keys(EMPTY_SEO)) {
-      if (cs[k]) loadedSeo[k] = cs[k]
-    }
-    setEditSeo(loadedSeo)
-  }
-
-  // Import handler for campaign edit
-  function handleCampaignImport() {
-    if (!importText.trim()) return
-    let parsed
-    try {
-      parsed = JSON.parse(importText)
-      if (typeof parsed === 'object' && parsed !== null) {
-        const baseKeys = Object.keys(EMPTY_ROW)
-        const newForm = { ...editForm }
-        for (const k of baseKeys) {
-          if (parsed[k]) newForm[k] = parsed[k]
-        }
-        setEditForm(newForm)
-        const infoSrc = parsed.info || parsed
-        const newInfo = { ...editInfo }
-        for (const k of Object.keys(EMPTY_INFO)) {
-          if (infoSrc[k]) newInfo[k] = infoSrc[k]
-        }
-        setEditInfo(newInfo)
-        const seoSrc = parsed.seo || parsed
-        const newSeo = { ...editSeo }
-        for (const k of Object.keys(EMPTY_SEO)) {
-          if (seoSrc[k]) newSeo[k] = seoSrc[k]
-        }
-        setEditSeo(newSeo)
-        showAlert('Import JSON reussi')
-        return
-      }
-    } catch { /* not JSON */ }
-    showAlert('Format non reconnu. Utilisez un JSON valide.', 'error')
+    selected.size === lines.length ? setSelected(new Set()) : setSelected(new Set(lines.map(l => l.id)))
   }
 
   const stats = {
-    total: campaigns.length,
-    draft: campaigns.filter(c => c.status === 'draft').length,
-    queued: campaigns.filter(c => c.status === 'queued').length,
-    done: campaigns.filter(c => c.status === 'done').length,
-    error: campaigns.filter(c => c.status === 'error').length,
+    total: lines.length,
+    draft: lines.filter(l => l.status === 'draft').length,
+    queued: lines.filter(l => l.status === 'queued').length,
+    done: lines.filter(l => l.status === 'done').length,
+    error: lines.filter(l => l.status === 'error').length,
   }
 
+  const branchInfo = BRANCHES.find(b => b.id === meta.branch) || BRANCHES[0]
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Nav />
-      <main style={{ flex: 1, marginLeft: '220px', padding: '32px' }}>
+    <div className="fade-in">
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+        <button onClick={onBack} className="btn btn-secondary btn-sm" style={{ padding: '6px 10px' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: '20px', fontWeight: '600' }}>
+            {branchInfo.icon} {meta.name || 'Nouvelle campagne'}
+          </h1>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            {branchInfo.label} · {meta.sector || '—'} · Cree le {new Date(campaign.createdAt).toLocaleDateString('fr')}
+          </p>
+        </div>
+      </div>
+
+      {/* Phase tabs */}
+      <div className="tabs">
+        <button className={`tab ${phase === 'info' ? 'tab-active' : ''}`} onClick={() => setPhase('info')}>
+          Base de redaction
+          {Object.values(info).some(Boolean) && <span className="badge badge-blue" style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 6px' }}>{Object.values(info).filter(Boolean).length}</span>}
+        </button>
+        <button className={`tab ${phase === 'lines' ? 'tab-active' : ''}`} onClick={() => setPhase('lines')}>
+          Lignes de contenu
+          {lines.length > 0 && <span className="badge badge-muted" style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 6px' }}>{lines.length}</span>}
+        </button>
+      </div>
+
+      {/* ============= PHASE: INFO ============= */}
+      {phase === 'info' && (
         <div className="fade-in">
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
-            <div>
-              <h1 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '4px' }}>Campagnes</h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
-                Gerez vos generations de contenu en lot. Remplissez les lignes, mettez-les en file et lancez.
-              </p>
+          {/* Meta fields */}
+          <div className="card" style={{ marginBottom: '12px' }}>
+            <div className="section-title">Parametres generaux</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+              <div className="field">
+                <label className="label">Nom de l'entreprise <span className="required">*</span></label>
+                <input value={meta.name} onChange={handleM('name')} placeholder="ex : Pierre Carrelage" />
+              </div>
+              <div className="field">
+                <label className="label">Branche</label>
+                <select value={meta.branch} onChange={handleM('branch')}>
+                  {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.label}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">Secteur</label>
+                <input value={meta.sector} onChange={handleM('sector')} placeholder="ex : Carrelage" />
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={addRow} className="btn btn-primary btn-sm">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Ajouter une ligne
-              </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              <div className="field">
+                <label className="label">Ton</label>
+                <select value={meta.tone} onChange={handleM('tone')}>
+                  {TONES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">Mots</label>
+                <select value={meta.word_count} onChange={handleM('word_count')}>
+                  <option value="800">800</option><option value="1200">1200</option>
+                  <option value="1500">1500</option><option value="2000">2000</option>
+                </select>
+              </div>
+              <div className="field">
+                <label className="label">Langue</label>
+                <select value={meta.lang} onChange={handleM('lang')}>
+                  <option value="fr">Francais</option><option value="en">Anglais</option><option value="es">Espagnol</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Alert */}
-          {alert && (
-            <div className="fade-in" style={{
-              padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px',
-              background: alert.type === 'success' ? 'var(--success-soft)' : 'var(--danger-soft)',
-              border: `1px solid ${alert.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-              color: alert.type === 'success' ? 'var(--success)' : 'var(--danger)',
-            }}>
-              {alert.msg}
+          {/* Info sub-tabs */}
+          <div className="tabs" style={{ marginBottom: '16px' }}>
+            {INFO_TABS.map(t => (
+              <button key={t.id} className={`tab ${infoTab === t.id ? 'tab-active' : ''}`} onClick={() => setInfoTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {infoTab === 'info' && (
+            <div className="fade-in">
+              {/* Entreprise */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="field">
+                    <label className="label">Contexte entreprise</label>
+                    <textarea value={info.context} onChange={handleI('context')} placeholder="Presentation, anciennete, positionnement..." style={{ minHeight: '100px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Infos supplementaires</label>
+                    <textarea value={info.extra_info} onChange={handleI('extra_info')} placeholder="Labels, certifications..." style={{ minHeight: '100px' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* B2B */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div className="field">
+                    <label className="label">Cibles B2B</label>
+                    <textarea value={info.b2b_target} onChange={handleI('b2b_target')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Offre B2B</label>
+                    <textarea value={info.b2b_offer} onChange={handleI('b2b_offer')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Valeur ajoutee B2B</label>
+                    <textarea value={info.b2b_value} onChange={handleI('b2b_value')} style={{ minHeight: '60px' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* B2C */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div className="field">
+                    <label className="label">Public B2C</label>
+                    <textarea value={info.b2c_target} onChange={handleI('b2c_target')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Experience client</label>
+                    <textarea value={info.b2c_experience} onChange={handleI('b2c_experience')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Ambiance</label>
+                    <textarea value={info.b2c_ambiance} onChange={handleI('b2c_ambiance')} style={{ minHeight: '60px' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Personas */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="label">Personas</label>
+                  <textarea value={info.personas} onChange={handleI('personas')} placeholder="Persona 1: Claire, 48 ans..." style={{ minHeight: '100px' }} />
+                </div>
+              </div>
+
+              {/* Services */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="label">Services</label>
+                  <textarea value={info.services} onChange={handleI('services')} style={{ minHeight: '80px' }} />
+                </div>
+              </div>
+
+              {/* Geographie */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <div className="field">
+                    <label className="label">Implantation</label>
+                    <textarea value={info.geo_location} onChange={handleI('geo_location')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Zone chalandise</label>
+                    <textarea value={info.geo_zone} onChange={handleI('geo_zone')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Environnement</label>
+                    <textarea value={info.geo_environment} onChange={handleI('geo_environment')} style={{ minHeight: '60px' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Style */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="field">
+                    <label className="label">Style redactionnel</label>
+                    <textarea value={info.style_approach} onChange={handleI('style_approach')} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div className="field">
+                    <label className="label">Vocabulaire</label>
+                    <textarea value={info.style_vocabulary} onChange={handleI('style_vocabulary')} style={{ minHeight: '60px' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Avis */}
+              <div className="card" style={{ marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="label">Avis clients</label>
+                  <textarea value={info.reviews} onChange={handleI('reviews')} style={{ minHeight: '50px' }} />
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Stats bar */}
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '12px', color: 'var(--text-muted)' }}>
+          {infoTab === 'import' && (
+            <div className="card fade-in" style={{ marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                Collez un brief JSON pour remplir automatiquement les champs.
+              </p>
+              <textarea
+                className="import-area"
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+                placeholder='{"company":"...", "info": {"context":"...", "b2b_target":"..."}}'
+                style={{ minHeight: '250px' }}
+              />
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                <button onClick={handleImport} className="btn btn-primary btn-sm" disabled={!importText.trim()}>
+                  Parser et remplir
+                </button>
+                <button onClick={() => setImportText('')} className="btn btn-secondary btn-sm">Vider</button>
+              </div>
+            </div>
+          )}
+
+          {/* Save button */}
+          <button
+            onClick={saveInfo}
+            disabled={saving || !meta.name}
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '12px', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            {saving ? (
+              <><svg className="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Sauvegarde...</>
+            ) : (
+              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg> Valider la base de redaction</>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* ============= PHASE: LINES ============= */}
+      {phase === 'lines' && (
+        <div className="fade-in">
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '12px', fontSize: '12px', color: 'var(--text-muted)' }}>
             <span>{stats.total} total</span>
-            <span style={{ color: 'var(--text-muted)' }}>{stats.draft} brouillon(s)</span>
+            <span>{stats.draft} brouillon(s)</span>
             <span style={{ color: 'var(--warning)' }}>{stats.queued} en file</span>
             <span style={{ color: 'var(--success)' }}>{stats.done} termine(s)</span>
             <span style={{ color: 'var(--danger)' }}>{stats.error} erreur(s)</span>
           </div>
 
           {/* Action bar */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px',
-            flexWrap: 'wrap',
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <button onClick={addNewLine} className="btn btn-primary btn-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Ajouter une ligne
+            </button>
             {selected.size > 0 && (
               <>
-                <button onClick={queueSelected} className="btn btn-secondary btn-sm">
-                  Mettre en file ({selected.size})
-                </button>
-                <button onClick={deleteSelected} className="btn btn-danger btn-sm">
-                  Supprimer ({selected.size})
-                </button>
-                <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
+                <button onClick={queueSelectedLines} className="btn btn-secondary btn-sm">Mettre en file ({selected.size})</button>
+                <button onClick={deleteSelectedLines} className="btn btn-danger btn-sm">Supprimer ({selected.size})</button>
               </>
             )}
-            <button
-              onClick={launchQueued}
-              disabled={launching || stats.queued === 0}
-              className="btn btn-primary btn-sm"
-            >
+            <div style={{ flex: 1 }} />
+            <button onClick={launchQueued} disabled={launching || stats.queued === 0} className="btn btn-primary btn-sm">
               {launching ? (
-                <>
-                  <svg className="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                  </svg>
-                  Lancement...
-                </>
+                <><svg className="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Lancement...</>
               ) : (
                 <>Lancer la file ({stats.queued})</>
               )}
             </button>
-
-            <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
-
-            {/* Auto mode */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <select
-                value={autoInterval}
-                onChange={e => setAutoInterval(Number(e.target.value))}
-                disabled={autoMode}
-                style={{ width: '120px', fontSize: '12px', padding: '5px 8px' }}
-              >
-                <option value={5}>Toutes les 5 min</option>
-                <option value={10}>Toutes les 10 min</option>
-                <option value={15}>Toutes les 15 min</option>
-                <option value={30}>Toutes les 30 min</option>
-              </select>
-              <button
-                onClick={toggleAutoMode}
-                className={`btn btn-sm ${autoMode ? 'btn-danger' : 'btn-success'}`}
-              >
-                {autoMode ? (
-                  <>
-                    <svg className="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                    </svg>
-                    Arreter l'auto
-                  </>
-                ) : 'Mode auto'}
-              </button>
-            </div>
+            <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
+            <select value={autoInterval} onChange={e => setAutoInterval(Number(e.target.value))} disabled={autoMode} style={{ width: '120px', fontSize: '12px', padding: '5px 8px' }}>
+              <option value={5}>Toutes les 5 min</option>
+              <option value={10}>Toutes les 10 min</option>
+              <option value={15}>Toutes les 15 min</option>
+              <option value={30}>Toutes les 30 min</option>
+            </select>
+            <button onClick={toggleAutoMode} className={`btn btn-sm ${autoMode ? 'btn-danger' : 'btn-success'}`}>
+              {autoMode ? (
+                <><svg className="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Arreter</>
+              ) : 'Mode auto'}
+            </button>
           </div>
 
-          {/* Table */}
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Chargement...</div>
-          ) : campaigns.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Aucune campagne. Ajoutez votre premiere ligne.</p>
-              <button onClick={addRow} className="btn btn-primary">Ajouter une ligne</button>
+          {/* Lines table */}
+          {lines.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '14px' }}>Aucune ligne. Ajoutez votre premier contenu.</p>
+              <button onClick={addNewLine} className="btn btn-primary">Ajouter une ligne</button>
             </div>
           ) : (
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th style={{ width: '40px' }}>
-                      <input
-                        type="checkbox"
-                        className="checkbox"
-                        checked={selected.size === campaigns.length && campaigns.length > 0}
-                        onChange={toggleSelectAll}
-                      />
+                    <th style={{ width: '36px' }}>
+                      <input type="checkbox" className="checkbox" checked={selected.size === lines.length && lines.length > 0} onChange={toggleSelectAll} />
                     </th>
                     <th>Statut</th>
-                    <th>Branche</th>
-                    <th>Entreprise</th>
                     <th>URL</th>
                     <th>Mot-cle</th>
                     <th>Ville</th>
-                    <th>Ton</th>
-                    <th>Mots</th>
-                    <th style={{ width: '120px' }}>Actions</th>
+                    <th>H1</th>
+                    <th style={{ width: '110px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map(c => {
-                    const isEditing = editRow === c.id
-                    const branchInfo = BRANCHES.find(b => b.id === (isEditing ? editForm.branch : c.branch)) || BRANCHES[0]
+                  {lines.map(line => {
+                    const isEditing = editLine === line.id
 
                     if (isEditing) {
                       return (
-                        <tr key={c.id} style={{ background: 'var(--bg-card)' }}>
-                          <td>
-                            <input type="checkbox" className="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} />
-                          </td>
-                          <td><StatusBadge status={c.status} /></td>
-                          <td>
-                            <select value={editForm.branch} onChange={e => setEditForm(f => ({ ...f, branch: e.target.value }))}>
-                              {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.label}</option>)}
-                            </select>
-                          </td>
-                          <td><input value={editForm.company} onChange={e => setEditForm(f => ({ ...f, company: e.target.value }))} placeholder="Entreprise" /></td>
+                        <tr key={line.id} style={{ background: 'var(--bg-card)' }}>
+                          <td><input type="checkbox" className="checkbox" checked={selected.has(line.id)} onChange={() => toggleSelect(line.id)} /></td>
+                          <td><StatusBadge status={line.status} /></td>
                           <td><input value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="URL cible" /></td>
-                          <td><input value={editForm.keyword_main} onChange={e => setEditForm(f => ({ ...f, keyword_main: e.target.value }))} placeholder="Mot-cle principal" /></td>
+                          <td><input value={editForm.keyword_main} onChange={e => setEditForm(f => ({ ...f, keyword_main: e.target.value }))} placeholder="Mot-cle" /></td>
                           <td><input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder="Ville" /></td>
-                          <td>
-                            <select value={editForm.tone} onChange={e => setEditForm(f => ({ ...f, tone: e.target.value }))}>
-                              {TONES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                            </select>
-                          </td>
-                          <td>
-                            <select value={editForm.word_count} onChange={e => setEditForm(f => ({ ...f, word_count: e.target.value }))}>
-                              <option value="800">800</option>
-                              <option value="1200">1200</option>
-                              <option value="1500">1500</option>
-                              <option value="2000">2000</option>
-                            </select>
-                          </td>
+                          <td><input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="H1" /></td>
                           <td>
                             <div style={{ display: 'flex', gap: '4px' }}>
-                              <button onClick={() => saveRow(c.id)} className="btn btn-primary btn-sm" style={{ padding: '4px 8px' }}>
+                              <button onClick={() => saveLine(line.id)} className="btn btn-primary btn-sm" style={{ padding: '4px 8px' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                               </button>
-                              <button onClick={() => setEditRow(null)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
+                              <button onClick={() => setEditLine(null)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                               </button>
                             </div>
@@ -574,37 +744,27 @@ export default function CampaignsPage() {
                     }
 
                     return (
-                      <tr key={c.id}>
-                        <td>
-                          <input type="checkbox" className="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} />
-                        </td>
-                        <td><StatusBadge status={c.status} /></td>
-                        <td>
-                          <span style={{ fontSize: '14px' }}>{branchInfo.icon}</span>
-                          <span style={{ marginLeft: '4px', fontSize: '12px' }}>{branchInfo.label}</span>
-                        </td>
-                        <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{c.company || '—'}</td>
-                        <td style={{ fontSize: '12px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.url || '—'}
-                        </td>
-                        <td>{c.keyword_main || '—'}</td>
-                        <td>{c.city || '—'}</td>
-                        <td style={{ fontSize: '12px' }}>{c.tone || '—'}</td>
-                        <td style={{ fontSize: '12px' }}>{c.word_count || '—'}</td>
+                      <tr key={line.id}>
+                        <td><input type="checkbox" className="checkbox" checked={selected.has(line.id)} onChange={() => toggleSelect(line.id)} /></td>
+                        <td><StatusBadge status={line.status} /></td>
+                        <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.url || '—'}</td>
+                        <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{line.keyword_main || '—'}</td>
+                        <td>{line.city || '—'}</td>
+                        <td style={{ fontSize: '12px' }}>{line.h1 || '—'}</td>
                         <td>
                           <div style={{ display: 'flex', gap: '4px' }}>
-                            {(c.status === 'draft' || c.status === 'error') && (
-                              <button onClick={() => startEdit(c)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }} title="Modifier">
+                            {(line.status === 'draft' || line.status === 'error') && (
+                              <button onClick={() => startEditLine(line)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }} title="Modifier">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                 </svg>
                               </button>
                             )}
-                            {(c.status === 'draft' || c.status === 'queued' || c.status === 'error') && (
+                            {(line.status === 'draft' || line.status === 'queued' || line.status === 'error') && (
                               <button
-                                onClick={() => launchRow(c.id)}
-                                disabled={launching || !c.company || !c.url || !c.keyword_main}
+                                onClick={() => launchLine(line.id)}
+                                disabled={launching || !line.url || !line.keyword_main}
                                 className="btn btn-primary btn-sm"
                                 style={{ padding: '4px 8px' }}
                                 title="Lancer"
@@ -614,9 +774,7 @@ export default function CampaignsPage() {
                                 </svg>
                               </button>
                             )}
-                            {c.status === 'done' && (
-                              <span style={{ fontSize: '11px', color: 'var(--success)' }}>OK</span>
-                            )}
+                            {line.status === 'done' && <span style={{ fontSize: '11px', color: 'var(--success)' }}>OK</span>}
                           </div>
                         </td>
                       </tr>
@@ -627,209 +785,142 @@ export default function CampaignsPage() {
             </div>
           )}
 
-          {/* Expanded edit panel with tabs */}
-          {editRow && (
-            <div className="card fade-in" style={{ marginTop: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <div className="section-title" style={{ marginBottom: 0 }}>Edition enrichie</div>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  <button onClick={() => saveRow(editRow)} className="btn btn-primary btn-sm">Sauvegarder</button>
-                  <button onClick={() => setEditRow(null)} className="btn btn-secondary btn-sm">Fermer</button>
+          {/* Expanded edit for line details */}
+          {editLine && (
+            <div className="card fade-in" style={{ marginTop: '14px' }}>
+              <div className="section-title">Champs complementaires</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="label">Mots-cles secondaires</label>
+                  <input value={editForm.keywords_sec} onChange={e => setEditForm(f => ({ ...f, keywords_sec: e.target.value }))} placeholder="separes par des virgules" />
+                </div>
+                <div className="field">
+                  <label className="label">Intention SEO</label>
+                  <input value={editForm.intent} onChange={e => setEditForm(f => ({ ...f, intent: e.target.value }))} placeholder="But de la page" />
+                </div>
+                <div className="field">
+                  <label className="label">H1 suggere</label>
+                  <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="Titre H1" />
                 </div>
               </div>
-
-              {/* Edit tabs */}
-              <div className="tabs" style={{ marginBottom: '16px' }}>
-                {EDIT_TABS.map(t => (
-                  <button key={t.id} className={`tab ${editTab === t.id ? 'tab-active' : ''}`} onClick={() => setEditTab(t.id)}>
-                    {t.label}
-                    {t.id === 'info' && Object.values(editInfo).some(Boolean) && <span className="badge badge-blue" style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px' }}>*</span>}
-                    {t.id === 'seo' && Object.values(editSeo).some(Boolean) && <span className="badge badge-green" style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px' }}>*</span>}
-                  </button>
-                ))}
+              <div className="field" style={{ marginBottom: '12px' }}>
+                <label className="label">Instructions supplementaires</label>
+                <textarea value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques a cette ligne..." style={{ minHeight: '60px' }} />
               </div>
 
-              {/* Tab: Base */}
-              {editTab === 'base' && (
-                <div className="fade-in">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field">
-                      <label className="label">Secteur</label>
-                      <input value={editForm.sector} onChange={e => setEditForm(f => ({ ...f, sector: e.target.value }))} placeholder="ex: Carrelage" />
-                    </div>
-                    <div className="field">
-                      <label className="label">Mots-cles secondaires</label>
-                      <input value={editForm.keywords_sec} onChange={e => setEditForm(f => ({ ...f, keywords_sec: e.target.value }))} placeholder="separes par des virgules" />
-                    </div>
-                    <div className="field">
-                      <label className="label">Intention SEO</label>
-                      <input value={editForm.intent} onChange={e => setEditForm(f => ({ ...f, intent: e.target.value }))} placeholder="But de la page" />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field">
-                      <label className="label">H1 suggere</label>
-                      <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="Titre H1" />
-                    </div>
-                    <div className="field">
-                      <label className="label">Langue</label>
-                      <select value={editForm.lang} onChange={e => setEditForm(f => ({ ...f, lang: e.target.value }))}>
-                        <option value="fr">Francais</option>
-                        <option value="en">Anglais</option>
-                        <option value="es">Espagnol</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Description</label>
-                    <textarea value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques..." style={{ minHeight: '60px' }} />
-                  </div>
-                  {editForm.branch === 'ecommerce' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                      <div className="field"><label className="label">Nom produit</label><input value={editForm.product_name} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} /></div>
-                      <div className="field"><label className="label">Prix</label><input value={editForm.product_price} onChange={e => setEditForm(f => ({ ...f, product_price: e.target.value }))} /></div>
-                      <div className="field"><label className="label">Reference</label><input value={editForm.product_ref} onChange={e => setEditForm(f => ({ ...f, product_ref: e.target.value }))} /></div>
-                    </div>
-                  )}
-                  {editForm.branch === 'catalogue' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                      <div className="field"><label className="label">Produit catalogue</label><input value={editForm.cat_product} onChange={e => setEditForm(f => ({ ...f, cat_product: e.target.value }))} /></div>
-                      <div className="field"><label className="label">Ref catalogue</label><input value={editForm.cat_ref} onChange={e => setEditForm(f => ({ ...f, cat_ref: e.target.value }))} /></div>
-                    </div>
-                  )}
+              {meta.branch === 'ecommerce' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                  <div className="field"><label className="label">Nom produit</label><input value={editForm.product_name} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Prix</label><input value={editForm.product_price} onChange={e => setEditForm(f => ({ ...f, product_price: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Reference</label><input value={editForm.product_ref} onChange={e => setEditForm(f => ({ ...f, product_ref: e.target.value }))} /></div>
                 </div>
               )}
 
-              {/* Tab: Information */}
-              {editTab === 'info' && (
-                <div className="fade-in">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field">
-                      <label className="label">Contexte entreprise</label>
-                      <textarea value={editInfo.context} onChange={e => setEditInfo(f => ({ ...f, context: e.target.value }))} placeholder="Presentation, anciennete, positionnement..." style={{ minHeight: '80px' }} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Infos supplementaires</label>
-                      <textarea value={editInfo.extra_info} onChange={e => setEditInfo(f => ({ ...f, extra_info: e.target.value }))} placeholder="Labels, certifications..." style={{ minHeight: '80px' }} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field">
-                      <label className="label">Cibles B2B</label>
-                      <textarea value={editInfo.b2b_target} onChange={e => setEditInfo(f => ({ ...f, b2b_target: e.target.value }))} style={{ minHeight: '50px' }} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Offre B2B</label>
-                      <textarea value={editInfo.b2b_offer} onChange={e => setEditInfo(f => ({ ...f, b2b_offer: e.target.value }))} style={{ minHeight: '50px' }} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Valeur ajoutee B2B</label>
-                      <textarea value={editInfo.b2b_value} onChange={e => setEditInfo(f => ({ ...f, b2b_value: e.target.value }))} style={{ minHeight: '50px' }} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field">
-                      <label className="label">Public B2C</label>
-                      <textarea value={editInfo.b2c_target} onChange={e => setEditInfo(f => ({ ...f, b2c_target: e.target.value }))} style={{ minHeight: '50px' }} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Experience client</label>
-                      <textarea value={editInfo.b2c_experience} onChange={e => setEditInfo(f => ({ ...f, b2c_experience: e.target.value }))} style={{ minHeight: '50px' }} />
-                    </div>
-                    <div className="field">
-                      <label className="label">Ambiance</label>
-                      <textarea value={editInfo.b2c_ambiance} onChange={e => setEditInfo(f => ({ ...f, b2c_ambiance: e.target.value }))} style={{ minHeight: '50px' }} />
-                    </div>
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Personas</label>
-                    <textarea value={editInfo.personas} onChange={e => setEditInfo(f => ({ ...f, personas: e.target.value }))} placeholder="Persona 1: Claire, 48 ans..." style={{ minHeight: '80px' }} />
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Services</label>
-                    <textarea value={editInfo.services} onChange={e => setEditInfo(f => ({ ...f, services: e.target.value }))} style={{ minHeight: '60px' }} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field"><label className="label">Implantation</label><textarea value={editInfo.geo_location} onChange={e => setEditInfo(f => ({ ...f, geo_location: e.target.value }))} style={{ minHeight: '50px' }} /></div>
-                    <div className="field"><label className="label">Zone chalandise</label><textarea value={editInfo.geo_zone} onChange={e => setEditInfo(f => ({ ...f, geo_zone: e.target.value }))} style={{ minHeight: '50px' }} /></div>
-                    <div className="field"><label className="label">Environnement</label><textarea value={editInfo.geo_environment} onChange={e => setEditInfo(f => ({ ...f, geo_environment: e.target.value }))} style={{ minHeight: '50px' }} /></div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field"><label className="label">Style redactionnel</label><textarea value={editInfo.style_approach} onChange={e => setEditInfo(f => ({ ...f, style_approach: e.target.value }))} style={{ minHeight: '50px' }} /></div>
-                    <div className="field"><label className="label">Vocabulaire</label><textarea value={editInfo.style_vocabulary} onChange={e => setEditInfo(f => ({ ...f, style_vocabulary: e.target.value }))} style={{ minHeight: '50px' }} /></div>
-                  </div>
-                  <div className="field">
-                    <label className="label">Avis clients</label>
-                    <textarea value={editInfo.reviews} onChange={e => setEditInfo(f => ({ ...f, reviews: e.target.value }))} style={{ minHeight: '40px' }} />
-                  </div>
-                </div>
-              )}
-
-              {/* Tab: SEO & Contenu */}
-              {editTab === 'seo' && (
-                <div className="fade-in">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                    <div className="field"><label className="label">Categorie</label><input value={editSeo.category_title} onChange={e => setEditSeo(f => ({ ...f, category_title: e.target.value }))} /></div>
-                    <div className="field"><label className="label">Statut</label><input value={editSeo.status} onChange={e => setEditSeo(f => ({ ...f, status: e.target.value }))} /></div>
-                    <div className="field"><label className="label">Location</label><input value={editSeo.location} onChange={e => setEditSeo(f => ({ ...f, location: e.target.value }))} /></div>
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Plan H2</label>
-                    <textarea value={editSeo.h2_plan} onChange={e => setEditSeo(f => ({ ...f, h2_plan: e.target.value }))} placeholder="H2-1 : ... H2-2 : ..." style={{ minHeight: '80px' }} />
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Keywords (volumes, competition)</label>
-                    <textarea value={editSeo.keywords_data} onChange={e => setEditSeo(f => ({ ...f, keywords_data: e.target.value }))} className="import-area" style={{ minHeight: '80px' }} />
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Brief SEO</label>
-                    <textarea value={editSeo.brief_seo} onChange={e => setEditSeo(f => ({ ...f, brief_seo: e.target.value }))} className="import-area" style={{ minHeight: '100px' }} />
-                  </div>
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">Introduction</label>
-                    <textarea value={editSeo.article_intro} onChange={e => setEditSeo(f => ({ ...f, article_intro: e.target.value }))} style={{ minHeight: '60px' }} />
-                  </div>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <div key={n} className="field" style={{ marginBottom: '12px' }}>
-                      <label className="label">Partie {n}</label>
-                      <textarea value={editSeo[`article_part${n}`]} onChange={e => setEditSeo(f => ({ ...f, [`article_part${n}`]: e.target.value }))} style={{ minHeight: '60px' }} />
-                    </div>
-                  ))}
-                  <div className="field" style={{ marginBottom: '12px' }}>
-                    <label className="label">FAQ HTML</label>
-                    <textarea value={editSeo.faq_html} onChange={e => setEditSeo(f => ({ ...f, faq_html: e.target.value }))} className="import-area" style={{ minHeight: '80px' }} />
-                  </div>
-                  <div className="field">
-                    <label className="label">Prompts image</label>
-                    <textarea value={editSeo.image_prompts} onChange={e => setEditSeo(f => ({ ...f, image_prompts: e.target.value }))} style={{ minHeight: '50px' }} />
-                  </div>
-                </div>
-              )}
-
-              {/* Tab: Import */}
-              {editTab === 'import' && (
-                <div className="fade-in">
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
-                    Collez un brief au format JSON pour remplir automatiquement tous les champs.
-                  </p>
-                  <textarea
-                    className="import-area"
-                    value={importText}
-                    onChange={e => setImportText(e.target.value)}
-                    placeholder="Collez votre JSON ici..."
-                    style={{ minHeight: '200px' }}
-                  />
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                    <button onClick={handleCampaignImport} className="btn btn-primary btn-sm" disabled={!importText.trim()}>
-                      Parser et remplir
-                    </button>
-                    <button onClick={() => setImportText('')} className="btn btn-secondary btn-sm">Vider</button>
-                  </div>
+              {meta.branch === 'catalogue' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="field"><label className="label">Produit catalogue</label><input value={editForm.cat_product} onChange={e => setEditForm(f => ({ ...f, cat_product: e.target.value }))} /></div>
+                  <div className="field"><label className="label">Ref catalogue</label><input value={editForm.cat_ref} onChange={e => setEditForm(f => ({ ...f, cat_ref: e.target.value }))} /></div>
                 </div>
               )}
             </div>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ==================================
+// MAIN PAGE
+// ==================================
+export default function CampaignsPage() {
+  const [campaigns, setCampaigns] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedCampaign, setSelectedCampaign] = useState(null)
+  const [alert, setAlert] = useState(null)
+
+  function showAlert(msg, type = 'success') {
+    setAlert({ msg, type })
+    setTimeout(() => setAlert(null), 5000)
+  }
+
+  async function loadCampaigns() {
+    try {
+      const res = await fetch('/api/campaigns')
+      const data = await res.json()
+      setCampaigns(Array.isArray(data) ? data : [])
+    } catch { setCampaigns([]) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { loadCampaigns() }, [])
+
+  async function createNewCampaign() {
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '', branch: 'vitrine' }),
+      })
+      const camp = await res.json()
+      setCampaigns(prev => [...prev, camp])
+      setSelectedCampaign(camp)
+    } catch {
+      showAlert('Erreur creation', 'error')
+    }
+  }
+
+  async function deleteCampaign(id) {
+    if (!confirm('Supprimer cette campagne et toutes ses lignes ?')) return
+    try {
+      await fetch('/api/campaigns', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      })
+      setCampaigns(prev => prev.filter(c => c.id !== id))
+      setSelectedCampaign(null)
+    } catch {
+      showAlert('Erreur suppression', 'error')
+    }
+  }
+
+  function handleCampaignUpdate(updated) {
+    setCampaigns(prev => prev.map(c => c.id === updated.id ? updated : c))
+    setSelectedCampaign(updated)
+  }
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <Nav />
+      <main style={{ flex: 1, marginLeft: '220px', padding: '32px', maxWidth: '1000px' }}>
+        {/* Alert */}
+        {alert && (
+          <div className="fade-in" style={{
+            padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '13px',
+            background: alert.type === 'success' ? 'var(--success-soft)' : 'var(--danger-soft)',
+            border: `1px solid ${alert.type === 'success' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+            color: alert.type === 'success' ? 'var(--success)' : 'var(--danger)',
+          }}>
+            {alert.msg}
+          </div>
+        )}
+
+        {selectedCampaign ? (
+          <CampaignDetail
+            campaign={selectedCampaign}
+            onBack={() => { setSelectedCampaign(null); loadCampaigns() }}
+            onUpdate={handleCampaignUpdate}
+            showAlert={showAlert}
+          />
+        ) : (
+          <CampaignList
+            campaigns={campaigns}
+            loading={loading}
+            onSelect={setSelectedCampaign}
+            onCreateNew={createNewCampaign}
+          />
+        )}
       </main>
     </div>
   )
