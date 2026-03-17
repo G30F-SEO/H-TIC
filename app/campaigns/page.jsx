@@ -713,83 +713,86 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                     <th>Mot-cle</th>
                     <th>Ville</th>
                     <th>H1</th>
-                    <th style={{ width: '110px' }}>Actions</th>
+                    <th style={{ width: '90px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map(line => {
-                    const isEditing = editLine === line.id
-
-                    if (isEditing) {
-                      return (
-                        <tr key={line.id} style={{ background: 'var(--bg-card)' }}>
-                          <td><input type="checkbox" className="checkbox" checked={selected.has(line.id)} onChange={() => toggleSelect(line.id)} /></td>
-                          <td><StatusBadge status={line.status} /></td>
-                          <td><input value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="URL cible" /></td>
-                          <td><input value={editForm.keyword_main} onChange={e => setEditForm(f => ({ ...f, keyword_main: e.target.value }))} placeholder="Mot-cle" /></td>
-                          <td><input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder="Ville" /></td>
-                          <td><input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="H1" /></td>
-                          <td>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              <button onClick={() => saveLine(line.id)} className="btn btn-primary btn-sm" style={{ padding: '4px 8px' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                              </button>
-                              <button onClick={() => setEditLine(null)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    }
-
-                    return (
-                      <tr key={line.id}>
-                        <td><input type="checkbox" className="checkbox" checked={selected.has(line.id)} onChange={() => toggleSelect(line.id)} /></td>
-                        <td><StatusBadge status={line.status} /></td>
-                        <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.url || '—'}</td>
-                        <td style={{ fontWeight: '500', color: 'var(--text-primary)' }}>{line.keyword_main || '—'}</td>
-                        <td>{line.city || '—'}</td>
-                        <td style={{ fontSize: '12px' }}>{line.h1 || '—'}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            {(line.status === 'draft' || line.status === 'error') && (
-                              <button onClick={() => startEditLine(line)} className="btn btn-secondary btn-sm" style={{ padding: '4px 8px' }} title="Modifier">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                              </button>
-                            )}
-                            {(line.status === 'draft' || line.status === 'queued' || line.status === 'error') && (
-                              <button
-                                onClick={() => launchLine(line.id)}
-                                disabled={launching || !line.url || !line.keyword_main}
-                                className="btn btn-primary btn-sm"
-                                style={{ padding: '4px 8px' }}
-                                title="Lancer"
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                                </svg>
-                              </button>
-                            )}
-                            {line.status === 'done' && <span style={{ fontSize: '11px', color: 'var(--success)' }}>OK</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {lines.map(line => (
+                    <tr
+                      key={line.id}
+                      style={{
+                        cursor: 'pointer',
+                        background: editLine === line.id ? 'var(--bg-card)' : undefined,
+                        borderLeft: editLine === line.id ? '2px solid var(--accent)' : '2px solid transparent',
+                      }}
+                      onClick={() => { if (editLine !== line.id) startEditLine(line) }}
+                    >
+                      <td onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" className="checkbox" checked={selected.has(line.id)} onChange={() => toggleSelect(line.id)} />
+                      </td>
+                      <td><StatusBadge status={line.status} /></td>
+                      <td style={{ fontSize: '12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{line.url || <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                      <td style={{ fontWeight: '500', color: line.keyword_main ? 'var(--text-primary)' : 'var(--text-muted)' }}>{line.keyword_main || '—'}</td>
+                      <td>{line.city || '—'}</td>
+                      <td style={{ fontSize: '12px' }}>{line.h1 || '—'}</td>
+                      <td onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {(line.status === 'draft' || line.status === 'queued' || line.status === 'error') && (
+                            <button
+                              onClick={() => launchLine(line.id)}
+                              disabled={launching || !line.url || !line.keyword_main}
+                              className="btn btn-primary btn-sm"
+                              style={{ padding: '4px 8px' }}
+                              title="Lancer"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                              </svg>
+                            </button>
+                          )}
+                          {line.status === 'done' && <span style={{ fontSize: '11px', color: 'var(--success)' }}>OK</span>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* Expanded edit for line details */}
+          {/* Edit panel for selected line */}
           {editLine && (
             <div className="card fade-in" style={{ marginTop: '14px' }}>
-              <div className="section-title">Champs complementaires</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div className="section-title" style={{ marginBottom: 0 }}>
+                  Edition de la ligne
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button onClick={() => saveLine(editLine)} className="btn btn-primary btn-sm">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    Sauvegarder
+                  </button>
+                  <button onClick={() => setEditLine(null)} className="btn btn-secondary btn-sm">Fermer</button>
+                </div>
+              </div>
+
+              {/* Main fields */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="label">URL cible <span className="required">*</span></label>
+                  <input value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="ex : pierrecarrelage.com/pose-carrelage" />
+                </div>
+                <div className="field">
+                  <label className="label">Mot-cle principal <span className="required">*</span></label>
+                  <input value={editForm.keyword_main} onChange={e => setEditForm(f => ({ ...f, keyword_main: e.target.value }))} placeholder="ex : pose de carrelage" />
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                <div className="field">
+                  <label className="label">Ville</label>
+                  <input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder="ex : Pau, Morlaas" />
+                </div>
                 <div className="field">
                   <label className="label">Mots-cles secondaires</label>
                   <input value={editForm.keywords_sec} onChange={e => setEditForm(f => ({ ...f, keywords_sec: e.target.value }))} placeholder="separes par des virgules" />
@@ -798,14 +801,17 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                   <label className="label">Intention SEO</label>
                   <input value={editForm.intent} onChange={e => setEditForm(f => ({ ...f, intent: e.target.value }))} placeholder="But de la page" />
                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                 <div className="field">
                   <label className="label">H1 suggere</label>
-                  <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="Titre H1" />
+                  <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="ex : Pose de carrelage a Pau" />
                 </div>
-              </div>
-              <div className="field" style={{ marginBottom: '12px' }}>
-                <label className="label">Instructions supplementaires</label>
-                <textarea value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques a cette ligne..." style={{ minHeight: '60px' }} />
+                <div className="field">
+                  <label className="label">Instructions supplementaires</label>
+                  <input value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques..." />
+                </div>
               </div>
 
               {meta.branch === 'ecommerce' && (
@@ -817,7 +823,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
               )}
 
               {meta.branch === 'catalogue' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                   <div className="field"><label className="label">Produit catalogue</label><input value={editForm.cat_product} onChange={e => setEditForm(f => ({ ...f, cat_product: e.target.value }))} /></div>
                   <div className="field"><label className="label">Ref catalogue</label><input value={editForm.cat_ref} onChange={e => setEditForm(f => ({ ...f, cat_ref: e.target.value }))} /></div>
                 </div>
