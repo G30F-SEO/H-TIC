@@ -1,54 +1,44 @@
 import { NextResponse } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { getWebhookUrl } from '@/lib/webhooks'
-import { addHistoryEntry } from '@/lib/db'
+import { jwtVerify } from 'jose'
 
-export async function POST(request) {
-  const session = await getSession()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+const PUBLIC_PATHS = ['/', '/api/auth', '/api/campaigns/auto']
 
-  const payload = await request.json()
-  const { branch } = payload
+function getSecret() {
+  const secret = process.env.JWT_SECRET || 'dev-secret-change-me'
+  return new TextEncoder().encode(secret)
+}
 
-  if (!branch) return NextResponse.json({ error: 'Branch required' }, { status: 400 })
+export async function middleware(request) {
+  const { pathname } = request.nextUrl
 
-  const webhookUrl = getWebhookUrl(branch)
-  if (!webhookUrl) {
-    return NextResponse.json({ error: `Webhook non configuré pour la branche "${branch}". Ajoutez WEBHOOK_${branch.toUpperCase()} dans vos variables d'environnement Vercel.` }, { status: 400 })
+  // Allow public paths and static assets
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon')
+  ) {
+    return NextResponse.next()
   }
 
-  let status = 'error'
-  let makeResponse = null
-  let errorMessage = null
+  const token = request.cookies.get('htic_session')?.value
+  if (!token) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return NextResponse.redirect(new URL('/', request.url))
+  }
 
   try {
-    const makeRes = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, source: 'H-TIC-Launcher', sentAt: new Date().toISOString() }),
-    })
-    status = makeRes.ok ? 'sent' : 'error'
-    makeResponse = makeRes.status
-    if (!makeRes.ok) errorMessage = `HTTP ${makeRes.status} depuis Make`
-  } catch (err) {
-    errorMessage = err.message
+    await jwtVerify(token, getSecret())
+    return NextResponse.next()
+  } catch {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return NextResponse.redirect(new URL('/', request.url))
   }
+}
 
-  // Sauvegarder dans l'historique
-  const entry = addHistoryEntry({
-    branch,
-    company: payload.company || 'Inconnu',
-    keyword_main: payload.keyword_main || '',
-    url: payload.url || '',
-    status,
-    makeStatus: makeResponse,
-    error: errorMessage,
-    payload,
-  })
-
-  if (status === 'sent') {
-    return NextResponse.json({ ok: true, entry })
-  } else {
-    return NextResponse.json({ error: errorMessage || 'Erreur webhook', entry }, { status: 502 })
-  }
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }

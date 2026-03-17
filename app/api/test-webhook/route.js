@@ -10,7 +10,7 @@ export async function POST(request) {
   const url = getWebhookUrl(branch)
 
   if (!url) {
-    return NextResponse.json({ ok: false, configured: false, message: 'Webhook non configuré dans les variables d\'environnement.' })
+    return NextResponse.json({ ok: false, configured: false, message: 'Webhook non configure dans les variables d\'environnement.' })
   }
 
   try {

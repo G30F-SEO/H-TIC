@@ -24,7 +24,7 @@ export default function LoginPage() {
         setError('Mot de passe incorrect.')
       }
     } catch {
-      setError('Erreur réseau.')
+      setError('Erreur reseau.')
     } finally {
       setLoading(false)
     }
@@ -39,7 +39,6 @@ export default function LoginPage() {
       background: 'var(--bg)',
       padding: '24px',
     }}>
-      {/* Glow décoration */}
       <div style={{
         position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)',
         width: '600px', height: '300px',
@@ -48,7 +47,6 @@ export default function LoginPage() {
       }} />
 
       <div className="fade-in" style={{ width: '100%', maxWidth: '380px' }}>
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -64,7 +62,7 @@ export default function LoginPage() {
             H-TIC Launcher
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Génération de contenu automatisée
+            Generation de contenu automatisee
           </div>
         </div>
 
@@ -95,12 +93,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !password}
+              className="btn btn-primary"
               style={{
                 width: '100%', padding: '11px',
-                background: loading || !password ? 'rgba(108,99,255,0.3)' : 'var(--accent)',
-                color: loading || !password ? 'rgba(255,255,255,0.4)' : '#fff',
-                borderRadius: '8px', fontWeight: '500', fontSize: '14px',
-                transition: 'all 0.15s', cursor: loading || !password ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
               }}
             >
@@ -111,7 +107,7 @@ export default function LoginPage() {
                   </svg>
                   Connexion...
                 </>
-              ) : 'Accéder à l\'application'}
+              ) : 'Acceder a l\'application'}
             </button>
           </div>
         </form>

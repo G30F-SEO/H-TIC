@@ -45,9 +45,6 @@ export default function HistoryPage() {
     total: history.length,
     sent: history.filter(h => h.status === 'sent').length,
     error: history.filter(h => h.status === 'error').length,
-    vitrine: history.filter(h => h.branch === 'vitrine').length,
-    ecommerce: history.filter(h => h.branch === 'ecommerce').length,
-    catalogue: history.filter(h => h.branch === 'catalogue').length,
   }
 
   return (
@@ -58,20 +55,12 @@ export default function HistoryPage() {
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '28px' }}>
             <div>
               <h1 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '4px' }}>Historique</h1>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Tous les lancements Make enregistrés.</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Tous les lancements Make enregistres.</p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={loadHistory} style={{
-                padding: '8px 14px', borderRadius: '8px', background: 'var(--bg-card)',
-                border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '13px',
-              }}>
-                Actualiser
-              </button>
+              <button onClick={loadHistory} className="btn btn-secondary btn-sm">Actualiser</button>
               {history.length > 0 && (
-                <button onClick={clearAll} disabled={clearing} style={{
-                  padding: '8px 14px', borderRadius: '8px', background: 'var(--danger-soft)',
-                  border: '1px solid rgba(239,68,68,0.2)', color: 'var(--danger)', fontSize: '13px',
-                }}>
+                <button onClick={clearAll} disabled={clearing} className="btn btn-danger btn-sm">
                   {clearing ? 'Suppression...' : 'Vider l\'historique'}
                 </button>
               )}
@@ -82,7 +71,7 @@ export default function HistoryPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', marginBottom: '20px' }}>
             {[
               { label: 'Total lancements', value: stats.total, color: 'var(--text-primary)' },
-              { label: 'Réussis', value: stats.sent, color: 'var(--success)' },
+              { label: 'Reussis', value: stats.sent, color: 'var(--success)' },
               { label: 'Erreurs', value: stats.error, color: 'var(--danger)' },
             ].map(s => (
               <div key={s.label} style={{
@@ -104,8 +93,8 @@ export default function HistoryPage() {
               { id: 'vitrine', label: '🏪 Vitrine' },
               { id: 'ecommerce', label: '🛒 E-commerce' },
               { id: 'catalogue', label: '📚 Catalogue' },
-              { id: 'sent', label: '✓ Réussis' },
-              { id: 'error', label: '✕ Erreurs' },
+              { id: 'sent', label: 'Reussis' },
+              { id: 'error', label: 'Erreurs' },
             ].map(f => (
               <button key={f.id} onClick={() => setFilter(f.id)} style={{
                 padding: '5px 12px', borderRadius: '20px', fontSize: '12px',
@@ -124,7 +113,7 @@ export default function HistoryPage() {
             <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Chargement...</div>
           ) : filtered.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-              Aucun lancement trouvé.
+              Aucun lancement trouve.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -135,7 +124,6 @@ export default function HistoryPage() {
                   <div key={entry.id} style={{
                     background: 'var(--bg-card)', border: '1px solid var(--border)',
                     borderRadius: '10px', overflow: 'hidden',
-                    transition: 'border-color 0.15s',
                   }}>
                     <button
                       onClick={() => setExpanded(isOpen ? null : entry.id)}
@@ -151,7 +139,7 @@ export default function HistoryPage() {
                           <span style={{ fontWeight: '500', fontSize: '14px' }}>{entry.company}</span>
                           <span className={`badge badge-${branchColor}`}>{entry.branch}</span>
                           <span className={`badge badge-${entry.status === 'sent' ? 'success' : 'danger'}`}>
-                            {entry.status === 'sent' ? '✓ Envoyé' : '✕ Erreur'}
+                            {entry.status === 'sent' ? 'Envoye' : 'Erreur'}
                           </span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>

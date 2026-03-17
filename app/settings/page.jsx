@@ -39,17 +39,17 @@ export default function SettingsPage() {
       const data = await res.json()
       if (!data.configured) {
         setWebhookStatus(s => ({ ...s, [branch]: 'error' }))
-        showAlert(`Webhook "${branch}" non configuré dans les variables d'environnement Vercel.`, 'error')
+        showAlert(`Webhook "${branch}" non configure dans les variables d'environnement Vercel.`, 'error')
       } else if (data.ok) {
         setWebhookStatus(s => ({ ...s, [branch]: 'ok' }))
-        showAlert(`Webhook "${branch}" opérationnel (HTTP ${data.status}).`, 'success')
+        showAlert(`Webhook "${branch}" operationnel (HTTP ${data.status}).`, 'success')
       } else {
         setWebhookStatus(s => ({ ...s, [branch]: 'error' }))
         showAlert(`Erreur webhook "${branch}" : ${data.message || 'HTTP ' + data.status}`, 'error')
       }
     } catch {
       setWebhookStatus(s => ({ ...s, [branch]: 'error' }))
-      showAlert('Erreur réseau lors du test.', 'error')
+      showAlert('Erreur reseau lors du test.', 'error')
     }
   }
 
@@ -66,7 +66,7 @@ export default function SettingsPage() {
       <main style={{ flex: 1, marginLeft: '220px', padding: '32px', maxWidth: '700px' }}>
         <div className="fade-in">
           <div style={{ marginBottom: '28px' }}>
-            <h1 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '4px' }}>Paramètres</h1>
+            <h1 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '4px' }}>Parametres</h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
               Configuration des webhooks Make et de l'application.
             </p>
@@ -87,14 +87,9 @@ export default function SettingsPage() {
           <div className="card" style={{ marginBottom: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <span className="section-title" style={{ marginBottom: 0 }}>Webhooks Make</span>
-              <button
-                onClick={testAll}
-                style={{
-                  padding: '6px 14px', borderRadius: '7px', fontSize: '12px',
-                  background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-                  color: '#6c63ff', cursor: 'pointer',
-                }}
-              >
+              <button onClick={testAll} className="btn btn-sm" style={{
+                background: 'var(--accent-soft)', border: '1px solid var(--accent-border)', color: '#6c63ff',
+              }}>
                 Tester tous
               </button>
             </div>
@@ -104,9 +99,9 @@ export default function SettingsPage() {
               padding: '12px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)',
               lineHeight: '1.6',
             }}>
-              Les URLs webhook sont configurées via les <strong style={{ color: 'var(--text-primary)' }}>variables d'environnement Vercel</strong>,
-              pas dans l'interface (pour des raisons de sécurité). Allez dans votre projet Vercel →{' '}
-              <strong style={{ color: 'var(--text-primary)' }}>Settings → Environment Variables</strong> pour les renseigner.
+              Les URLs webhook sont configurees via les <strong style={{ color: 'var(--text-primary)' }}>variables d'environnement Vercel</strong>,
+              pas dans l'interface (pour des raisons de securite). Allez dans votre projet Vercel &rarr;{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>Settings &rarr; Environment Variables</strong> pour les renseigner.
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -120,9 +115,7 @@ export default function SettingsPage() {
                     <span style={{ fontSize: '18px' }}>{b.icon}</span>
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '1px' }}>{b.label}</div>
-                      <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                        {b.env}
-                      </div>
+                      <div style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{b.env}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -130,12 +123,8 @@ export default function SettingsPage() {
                     <button
                       onClick={() => testWebhook(b.id)}
                       disabled={webhookStatus[b.id] === 'loading'}
-                      style={{
-                        padding: '6px 12px', borderRadius: '6px', fontSize: '12px',
-                        background: 'var(--bg-card)', border: '1px solid var(--border-strong)',
-                        color: 'var(--text-secondary)', cursor: 'pointer',
-                        opacity: webhookStatus[b.id] === 'loading' ? 0.5 : 1,
-                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ opacity: webhookStatus[b.id] === 'loading' ? 0.5 : 1 }}
                     >
                       {webhookStatus[b.id] === 'loading' ? 'Test...' : 'Tester'}
                     </button>
@@ -150,17 +139,17 @@ export default function SettingsPage() {
             <div className="section-title">Guide de configuration Vercel</div>
             <ol style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
-                { n: 1, text: 'Ouvrez votre projet sur vercel.com' },
-                { n: 2, text: 'Allez dans Settings → Environment Variables' },
-                { n: 3, text: <>Ajoutez <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>APP_PASSWORD</code> avec votre mot de passe choisi</> },
-                { n: 4, text: <>Ajoutez <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>JWT_SECRET</code> avec une chaîne aléatoire longue</> },
-                { n: 5, text: <>Ajoutez les 3 webhooks : <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>WEBHOOK_VITRINE</code>, <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>WEBHOOK_ECOMMERCE</code>, <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>WEBHOOK_CATALOGUE</code></> },
-                { n: 6, text: 'Redéployez (Deployments → Redeploy)' },
-                { n: 7, text: 'Testez chaque webhook depuis cette page' },
-              ].map(step => (
-                <li key={step.n} style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>Étape {step.n} — </span>
-                  {step.text}
+                'Ouvrez votre projet sur vercel.com',
+                'Allez dans Settings → Environment Variables',
+                'Ajoutez APP_PASSWORD avec votre mot de passe choisi',
+                'Ajoutez JWT_SECRET avec une chaine aleatoire longue',
+                'Ajoutez les 3 webhooks : WEBHOOK_VITRINE, WEBHOOK_ECOMMERCE, WEBHOOK_CATALOGUE',
+                'Redéployez (Deployments → Redeploy)',
+                'Testez chaque webhook depuis cette page',
+              ].map((text, i) => (
+                <li key={i} style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>Etape {i + 1} — </span>
+                  {text}
                 </li>
               ))}
             </ol>
@@ -168,12 +157,11 @@ export default function SettingsPage() {
 
           {/* Note persistence */}
           <div className="card">
-            <div className="section-title">Note sur la persistance de l'historique</div>
+            <div className="section-title">Note sur la persistance</div>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
-              Par défaut, l'historique est stocké dans <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>/tmp</code> sur
-              Vercel — il se réinitialise à chaque redéploiement. Pour une persistance complète, connectez une base de données
-              (recommandé : <strong style={{ color: 'var(--text-primary)' }}>Vercel KV</strong> ou <strong style={{ color: 'var(--text-primary)' }}>Supabase</strong>).
-              Le code est prévu pour ça — une seule fonction <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>lib/db.js</code> à remplacer.
+              Par defaut, l'historique et les campagnes sont stockes dans <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>/tmp</code> sur
+              Vercel — ils se reinitialisent a chaque redeploiement. Pour une persistance complete, connectez une base de donnees
+              (recommande : <strong style={{ color: 'var(--text-primary)' }}>Vercel KV</strong> ou <strong style={{ color: 'var(--text-primary)' }}>Supabase</strong>).
             </p>
           </div>
         </div>
