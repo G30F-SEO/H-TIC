@@ -785,7 +785,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                           </td>
                         </tr>
                         {isEditing && (
-                          <tr>
+                          <tr ref={editPanelRef}>
                             <td colSpan="7" style={{ padding: '16px', background: 'var(--bg-card)', borderBottom: '2px solid var(--accent)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                                 <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
