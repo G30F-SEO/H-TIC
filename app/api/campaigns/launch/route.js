@@ -36,6 +36,7 @@ function buildPayload(campaign, line) {
     campaignId: campaign.id,
     lineId: line.id,
     sentAt: new Date().toISOString(),
+    callback_url: `${process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/webhook/callback`,
   }
 
   // Merge all info fields from campaign
@@ -82,7 +83,7 @@ async function launchLine(campaign, line) {
 
     if (res.ok) {
       updateLine(campaign.id, line.id, {
-        status: 'done', launchedAt: now, completedAt: now, error: null, makeStatus: res.status,
+        status: 'processing', launchedAt: now, error: null, makeStatus: res.status,
       })
       addHistoryEntry({
         branch: campaign.branch, company: campaign.name,

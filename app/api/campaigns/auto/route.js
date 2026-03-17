@@ -64,6 +64,7 @@ export async function GET(request) {
     campaignId: targetCampaign.id,
     lineId: targetLine.id,
     sentAt: new Date().toISOString(),
+    callback_url: `${process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/webhook/callback`,
   }
 
   // Merge campaign info
@@ -93,7 +94,7 @@ export async function GET(request) {
 
     const now = new Date().toISOString()
     if (res.ok) {
-      updateLine(targetCampaign.id, targetLine.id, { status: 'done', launchedAt: now, completedAt: now, makeStatus: res.status })
+      updateLine(targetCampaign.id, targetLine.id, { status: 'processing', launchedAt: now, makeStatus: res.status })
       addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'sent', makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
       logger.success(`Cron: "${targetLine.keyword_main}" lance (${targetCampaign.name})`, { campaignId: targetCampaign.id, lineId: targetLine.id })
       return NextResponse.json({ ok: true, launched: 1, company: targetCampaign.name, keyword: targetLine.keyword_main })

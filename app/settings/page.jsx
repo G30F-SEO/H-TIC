@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Nav from '@/components/Nav'
 
 const BRANCHES = [
@@ -22,6 +22,13 @@ function StatusDot({ status }) {
 export default function SettingsPage() {
   const [webhookStatus, setWebhookStatus] = useState({ vitrine: 'idle', ecommerce: 'idle', catalogue: 'idle' })
   const [alert, setAlert] = useState(null)
+  const [callbackUrl, setCallbackUrl] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // Detect callback URL from current domain
+  useEffect(() => {
+    setCallbackUrl(`${window.location.origin}/api/webhook/callback`)
+  }, [])
 
   function showAlert(msg, type = 'success') {
     setAlert({ msg, type })
@@ -131,6 +138,108 @@ export default function SettingsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Webhook Callback URL for Make.com */}
+          <div className="card" style={{ marginBottom: '12px' }}>
+            <div className="section-title">Webhook de retour (Callback)</div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '14px' }}>
+              Configurez ce webhook <strong style={{ color: 'var(--text-primary)' }}>en sortie de votre scenario Make</strong> pour :
+            </p>
+            <ul style={{ paddingLeft: '18px', marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <li style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                Recevoir l'article genere (meta, H1, intro, body, FAQ)
+              </li>
+              <li style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                Marquer la ligne comme terminee dans H-TIC
+              </li>
+              <li style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                <strong style={{ color: 'var(--text-primary)' }}>Lancer automatiquement</strong> l'article suivant en file (chainé)
+              </li>
+            </ul>
+
+            <div style={{ marginBottom: '14px' }}>
+              <label className="label">URL de callback a configurer dans Make</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  readOnly
+                  value={callbackUrl || `${typeof window !== 'undefined' ? window.location.origin : 'https://votre-domaine.vercel.app'}/api/webhook/callback`}
+                  style={{
+                    flex: 1, fontFamily: 'var(--font-mono)', fontSize: '12px',
+                    background: 'var(--bg)', cursor: 'text',
+                  }}
+                  onClick={e => e.target.select()}
+                />
+                <button
+                  onClick={() => {
+                    const url = callbackUrl || `${window.location.origin}/api/webhook/callback`
+                    navigator.clipboard.writeText(url)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="btn btn-primary btn-sm"
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {copied ? 'Copie !' : 'Copier'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px',
+              padding: '14px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.7',
+            }}>
+              <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px', fontSize: '13px' }}>
+                Configuration Make.com
+              </div>
+              <ol style={{ paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li>Dans votre scenario Make, ajoutez un module <strong style={{ color: 'var(--text-primary)' }}>HTTP &rarr; Make a request</strong> en fin de chaine</li>
+                <li>URL : collez l'URL ci-dessus</li>
+                <li>Methode : <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '3px' }}>POST</code></li>
+                <li>Body type : <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--accent-soft)', padding: '1px 5px', borderRadius: '3px' }}>JSON</code></li>
+                <li>Corps JSON attendu :</li>
+              </ol>
+              <pre style={{
+                fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)',
+                background: 'var(--bg-surface)', borderRadius: '6px', padding: '12px',
+                marginTop: '8px', overflowX: 'auto', lineHeight: '1.5',
+                border: '1px solid var(--border)',
+              }}>{`{
+  "campaignId": "{{campaignId}}",
+  "lineId": "{{lineId}}",
+  "status": "done",
+  "meta_title": "{{meta_title}}",
+  "meta_description": "{{meta_description}}",
+  "h1": "{{h1}}",
+  "intro": "{{intro_html}}",
+  "body": "{{body_html}}",
+  "faq": "{{faq_html}}"
+}`}</pre>
+              <p style={{ marginTop: '10px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                Les champs <code style={{ fontFamily: 'var(--font-mono)' }}>campaignId</code> et <code style={{ fontFamily: 'var(--font-mono)' }}>lineId</code> sont
+                inclus dans le payload d'entree de votre scenario — mappez-les directement.
+                Le champ <code style={{ fontFamily: 'var(--font-mono)' }}>callback_url</code> est aussi envoye dans chaque payload pour reference.
+              </p>
+            </div>
+          </div>
+
+          {/* Auto-chain explanation */}
+          <div className="card" style={{ marginBottom: '12px' }}>
+            <div className="section-title">Enchainement automatique</div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '10px' }}>
+              Quand Make envoie le webhook de retour avec <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 5px', borderRadius: '3px', fontSize: '12px' }}>status: "done"</code>,
+              H-TIC lance <strong style={{ color: 'var(--text-primary)' }}>automatiquement</strong> la prochaine ligne en file de la meme campagne.
+            </p>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '12px 14px', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
+              borderRadius: '8px', fontSize: '13px', color: '#6c63ff',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+              Mettez vos lignes en file (statut "queued") → lancez la premiere → les suivantes se lancent toute seules.
             </div>
           </div>
 

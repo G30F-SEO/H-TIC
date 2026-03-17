@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCampaign, updateLine, addHistoryEntry, saveArticle } from '@/lib/db'
+import { getWebhookUrl } from '@/lib/webhooks'
 import { logger } from '@/lib/logger'
 
 // Webhook callback from Make.com
@@ -79,9 +80,115 @@ export async function POST(request) {
       campaignId, lineId, status: lineStatus, hasArticle: !!article,
     })
 
-    return NextResponse.json({ ok: true, status: lineStatus, articleId: article?.id || null })
+    // Auto-chain: if line completed successfully, launch next queued line in same campaign
+    let nextLaunched = null
+    if (lineStatus === 'done' && campaignId) {
+      const campaign = getCampaign(campaignId)
+      if (campaign) {
+        const nextLine = (campaign.lines || []).find(l => l.status === 'queued')
+        if (nextLine) {
+          nextLaunched = await autoLaunchNext(campaign, nextLine)
+        }
+      }
+    }
+
+    return NextResponse.json({
+      ok: true,
+      status: lineStatus,
+      articleId: article?.id || null,
+      nextLaunched: nextLaunched || null,
+    })
   } catch (err) {
     logger.error(`Webhook callback erreur: ${err.message}`)
     return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
+// Auto-launch the next queued line in a campaign
+async function autoLaunchNext(campaign, line) {
+  const webhookUrl = getWebhookUrl(campaign.branch)
+  if (!webhookUrl) {
+    logger.warn(`Auto-chain: webhook non configure pour "${campaign.branch}"`)
+    return null
+  }
+
+  updateLine(campaign.id, line.id, { status: 'processing' })
+
+  const payload = {
+    branch: campaign.branch,
+    company: campaign.name,
+    sector: campaign.sector || '',
+    description: campaign.description || '',
+    word_count: campaign.word_count || '1200',
+    tone: campaign.tone || 'expert',
+    language: campaign.lang || 'fr',
+    url: line.url,
+    city: line.city || '',
+    keyword_main: line.keyword_main,
+    keywords_secondary: line.keywords_sec || '',
+    intent: line.intent || '',
+    h1: line.h1 || '',
+    extra_instructions: line.extra || '',
+    product_name: line.product_name || '',
+    product_price: line.product_price || '',
+    product_ref: line.product_ref || '',
+    cat_product: line.cat_product || '',
+    cat_ref: line.cat_ref || '',
+    cat_specs: line.cat_specs || '',
+    source: 'H-TIC-Launcher-AutoChain',
+    campaignId: campaign.id,
+    lineId: line.id,
+    sentAt: new Date().toISOString(),
+    callback_url: `${process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/webhook/callback`,
+  }
+
+  // Merge campaign info fields
+  const info = campaign.info || {}
+  for (const [k, v] of Object.entries(info)) {
+    if (v) payload[k] = v
+  }
+
+  // Internal linking
+  const otherLines = (campaign.lines || []).filter(l => l.id !== line.id && l.url)
+  if (otherLines.length > 0) {
+    payload.internal_links = otherLines.map(l => ({
+      url: l.url,
+      keyword: l.keyword_main || '',
+      h1: l.h1 || '',
+      city: l.city || '',
+    }))
+  }
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    const now = new Date().toISOString()
+    if (res.ok) {
+      updateLine(campaign.id, line.id, { launchedAt: now, makeStatus: res.status })
+      addHistoryEntry({
+        branch: campaign.branch, company: campaign.name,
+        keyword_main: line.keyword_main, url: line.url,
+        status: 'sent', makeStatus: res.status,
+        payload, campaignId: campaign.id, lineId: line.id,
+        autoChain: true,
+      })
+      logger.success(`Auto-chain: "${line.keyword_main}" lance (${campaign.name})`, {
+        campaignId: campaign.id, lineId: line.id,
+      })
+      return { lineId: line.id, keyword: line.keyword_main, status: 'launched' }
+    } else {
+      const error = `HTTP ${res.status}`
+      updateLine(campaign.id, line.id, { status: 'error', error, completedAt: now, makeStatus: res.status })
+      logger.error(`Auto-chain: echec "${line.keyword_main}": ${error}`)
+      return { lineId: line.id, keyword: line.keyword_main, status: 'error', error }
+    }
+  } catch (err) {
+    updateLine(campaign.id, line.id, { status: 'error', error: err.message, completedAt: new Date().toISOString() })
+    logger.error(`Auto-chain: erreur reseau "${line.keyword_main}": ${err.message}`)
+    return { lineId: line.id, keyword: line.keyword_main, status: 'error', error: err.message }
   }
 }
