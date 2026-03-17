@@ -757,6 +757,19 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                             </svg>
                           </button>
+                          {line.articleId && (
+                            <a
+                              href={`/articles/${line.articleId}`}
+                              className="btn btn-success btn-sm"
+                              style={{ padding: '4px 8px', textDecoration: 'none' }}
+                              title="Voir l'article"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                              </svg>
+                            </a>
+                          )}
                         </div>
                       </td>
                     </tr>
