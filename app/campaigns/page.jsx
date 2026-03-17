@@ -23,6 +23,26 @@ const STATUS_MAP = {
   error: { label: 'Erreur', color: 'var(--danger)', bg: 'var(--danger-soft)' },
 }
 
+const EMPTY_INFO = {
+  context: '', b2b_target: '', b2b_offer: '', b2b_value: '',
+  b2c_target: '', b2c_experience: '', b2c_ambiance: '',
+  personas: '', services: '',
+  geo_location: '', geo_zone: '', geo_environment: '',
+  style_approach: '', style_relation: '', style_objective: '',
+  style_vocabulary: '', style_promises: '', style_structure: '',
+  style_storytelling: '', style_engagement: '', style_verb_tense: '',
+  reviews: '', extra_info: '',
+}
+
+const EMPTY_SEO = {
+  category_title: '', h2_plan: '', status: '', links: '',
+  catalogue_id: '', categories: '', location: '',
+  keywords_data: '', serp_analysis: '', brief_seo: '',
+  article_intro: '', article_part1: '', article_part2: '',
+  article_part3: '', article_part4: '', article_part5: '',
+  faq_html: '', image_prompts: '',
+}
+
 const EMPTY_ROW = {
   branch: 'vitrine', company: '', url: '', city: '', sector: '',
   keyword_main: '', keywords_sec: '', intent: '', h1: '',
@@ -30,6 +50,13 @@ const EMPTY_ROW = {
   product_name: '', product_price: '', product_ref: '',
   cat_product: '', cat_ref: '', cat_specs: '',
 }
+
+const EDIT_TABS = [
+  { id: 'base', label: 'Base' },
+  { id: 'info', label: 'Information' },
+  { id: 'seo', label: 'SEO & Contenu' },
+  { id: 'import', label: 'Import' },
+]
 
 function StatusBadge({ status }) {
   const s = STATUS_MAP[status] || STATUS_MAP.draft
@@ -60,6 +87,10 @@ export default function CampaignsPage() {
   const [alert, setAlert] = useState(null)
   const [editRow, setEditRow] = useState(null)
   const [editForm, setEditForm] = useState(EMPTY_ROW)
+  const [editInfo, setEditInfo] = useState({ ...EMPTY_INFO })
+  const [editSeo, setEditSeo] = useState({ ...EMPTY_SEO })
+  const [editTab, setEditTab] = useState('base')
+  const [importText, setImportText] = useState('')
   const autoRef = useRef(null)
 
   function showAlert(msg, type = 'success') {
@@ -99,12 +130,13 @@ export default function CampaignsPage() {
   // Save row
   async function saveRow(id) {
     try {
+      const data = { id, ...editForm, info: editInfo, seo: editSeo }
       await fetch('/api/campaigns', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, ...editForm }),
+        body: JSON.stringify(data),
       })
-      setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...editForm } : c))
+      setCampaigns(prev => prev.map(c => c.id === id ? { ...c, ...editForm, info: editInfo, seo: editSeo } : c))
       setEditRow(null)
     } catch {
       showAlert('Erreur sauvegarde', 'error')
@@ -274,6 +306,8 @@ export default function CampaignsPage() {
   // Start editing a row
   function startEdit(campaign) {
     setEditRow(campaign.id)
+    setEditTab('base')
+    setImportText('')
     setEditForm({
       branch: campaign.branch || 'vitrine',
       company: campaign.company || '',
@@ -295,6 +329,52 @@ export default function CampaignsPage() {
       cat_ref: campaign.cat_ref || '',
       cat_specs: campaign.cat_specs || '',
     })
+    // Load info sub-object
+    const ci = campaign.info || {}
+    const loadedInfo = { ...EMPTY_INFO }
+    for (const k of Object.keys(EMPTY_INFO)) {
+      if (ci[k]) loadedInfo[k] = ci[k]
+    }
+    setEditInfo(loadedInfo)
+    // Load seo sub-object
+    const cs = campaign.seo || {}
+    const loadedSeo = { ...EMPTY_SEO }
+    for (const k of Object.keys(EMPTY_SEO)) {
+      if (cs[k]) loadedSeo[k] = cs[k]
+    }
+    setEditSeo(loadedSeo)
+  }
+
+  // Import handler for campaign edit
+  function handleCampaignImport() {
+    if (!importText.trim()) return
+    let parsed
+    try {
+      parsed = JSON.parse(importText)
+      if (typeof parsed === 'object' && parsed !== null) {
+        const baseKeys = Object.keys(EMPTY_ROW)
+        const newForm = { ...editForm }
+        for (const k of baseKeys) {
+          if (parsed[k]) newForm[k] = parsed[k]
+        }
+        setEditForm(newForm)
+        const infoSrc = parsed.info || parsed
+        const newInfo = { ...editInfo }
+        for (const k of Object.keys(EMPTY_INFO)) {
+          if (infoSrc[k]) newInfo[k] = infoSrc[k]
+        }
+        setEditInfo(newInfo)
+        const seoSrc = parsed.seo || parsed
+        const newSeo = { ...editSeo }
+        for (const k of Object.keys(EMPTY_SEO)) {
+          if (seoSrc[k]) newSeo[k] = seoSrc[k]
+        }
+        setEditSeo(newSeo)
+        showAlert('Import JSON reussi')
+        return
+      }
+    } catch { /* not JSON */ }
+    showAlert('Format non reconnu. Utilisez un JSON valide.', 'error')
   }
 
   const stats = {
@@ -547,69 +627,203 @@ export default function CampaignsPage() {
             </div>
           )}
 
-          {/* Expanded edit panel */}
+          {/* Expanded edit panel with tabs */}
           {editRow && (
             <div className="card fade-in" style={{ marginTop: '16px' }}>
-              <div className="section-title">Champs complementaires</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                <div className="field">
-                  <label className="label">Secteur</label>
-                  <input value={editForm.sector} onChange={e => setEditForm(f => ({ ...f, sector: e.target.value }))} placeholder="ex: Carrelage" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <div className="section-title" style={{ marginBottom: 0 }}>Edition enrichie</div>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button onClick={() => saveRow(editRow)} className="btn btn-primary btn-sm">Sauvegarder</button>
+                  <button onClick={() => setEditRow(null)} className="btn btn-secondary btn-sm">Fermer</button>
                 </div>
-                <div className="field">
-                  <label className="label">Mots-cles secondaires</label>
-                  <input value={editForm.keywords_sec} onChange={e => setEditForm(f => ({ ...f, keywords_sec: e.target.value }))} placeholder="separes par des virgules" />
-                </div>
-                <div className="field">
-                  <label className="label">Intention SEO</label>
-                  <input value={editForm.intent} onChange={e => setEditForm(f => ({ ...f, intent: e.target.value }))} placeholder="But de la page" />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                <div className="field">
-                  <label className="label">H1 suggere</label>
-                  <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="Titre H1" />
-                </div>
-                <div className="field">
-                  <label className="label">Langue</label>
-                  <select value={editForm.lang} onChange={e => setEditForm(f => ({ ...f, lang: e.target.value }))}>
-                    <option value="fr">Francais</option>
-                    <option value="en">Anglais</option>
-                    <option value="es">Espagnol</option>
-                  </select>
-                </div>
-              </div>
-              <div className="field" style={{ marginBottom: '12px' }}>
-                <label className="label">Instructions supplementaires</label>
-                <textarea value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques..." style={{ minHeight: '60px' }} />
               </div>
 
-              {editForm.branch === 'ecommerce' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                  <div className="field">
-                    <label className="label">Nom produit</label>
-                    <input value={editForm.product_name} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} />
+              {/* Edit tabs */}
+              <div className="tabs" style={{ marginBottom: '16px' }}>
+                {EDIT_TABS.map(t => (
+                  <button key={t.id} className={`tab ${editTab === t.id ? 'tab-active' : ''}`} onClick={() => setEditTab(t.id)}>
+                    {t.label}
+                    {t.id === 'info' && Object.values(editInfo).some(Boolean) && <span className="badge badge-blue" style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px' }}>*</span>}
+                    {t.id === 'seo' && Object.values(editSeo).some(Boolean) && <span className="badge badge-green" style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px' }}>*</span>}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab: Base */}
+              {editTab === 'base' && (
+                <div className="fade-in">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field">
+                      <label className="label">Secteur</label>
+                      <input value={editForm.sector} onChange={e => setEditForm(f => ({ ...f, sector: e.target.value }))} placeholder="ex: Carrelage" />
+                    </div>
+                    <div className="field">
+                      <label className="label">Mots-cles secondaires</label>
+                      <input value={editForm.keywords_sec} onChange={e => setEditForm(f => ({ ...f, keywords_sec: e.target.value }))} placeholder="separes par des virgules" />
+                    </div>
+                    <div className="field">
+                      <label className="label">Intention SEO</label>
+                      <input value={editForm.intent} onChange={e => setEditForm(f => ({ ...f, intent: e.target.value }))} placeholder="But de la page" />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field">
+                      <label className="label">H1 suggere</label>
+                      <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="Titre H1" />
+                    </div>
+                    <div className="field">
+                      <label className="label">Langue</label>
+                      <select value={editForm.lang} onChange={e => setEditForm(f => ({ ...f, lang: e.target.value }))}>
+                        <option value="fr">Francais</option>
+                        <option value="en">Anglais</option>
+                        <option value="es">Espagnol</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Description</label>
+                    <textarea value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques..." style={{ minHeight: '60px' }} />
+                  </div>
+                  {editForm.branch === 'ecommerce' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                      <div className="field"><label className="label">Nom produit</label><input value={editForm.product_name} onChange={e => setEditForm(f => ({ ...f, product_name: e.target.value }))} /></div>
+                      <div className="field"><label className="label">Prix</label><input value={editForm.product_price} onChange={e => setEditForm(f => ({ ...f, product_price: e.target.value }))} /></div>
+                      <div className="field"><label className="label">Reference</label><input value={editForm.product_ref} onChange={e => setEditForm(f => ({ ...f, product_ref: e.target.value }))} /></div>
+                    </div>
+                  )}
+                  {editForm.branch === 'catalogue' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="field"><label className="label">Produit catalogue</label><input value={editForm.cat_product} onChange={e => setEditForm(f => ({ ...f, cat_product: e.target.value }))} /></div>
+                      <div className="field"><label className="label">Ref catalogue</label><input value={editForm.cat_ref} onChange={e => setEditForm(f => ({ ...f, cat_ref: e.target.value }))} /></div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab: Information */}
+              {editTab === 'info' && (
+                <div className="fade-in">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field">
+                      <label className="label">Contexte entreprise</label>
+                      <textarea value={editInfo.context} onChange={e => setEditInfo(f => ({ ...f, context: e.target.value }))} placeholder="Presentation, anciennete, positionnement..." style={{ minHeight: '80px' }} />
+                    </div>
+                    <div className="field">
+                      <label className="label">Infos supplementaires</label>
+                      <textarea value={editInfo.extra_info} onChange={e => setEditInfo(f => ({ ...f, extra_info: e.target.value }))} placeholder="Labels, certifications..." style={{ minHeight: '80px' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field">
+                      <label className="label">Cibles B2B</label>
+                      <textarea value={editInfo.b2b_target} onChange={e => setEditInfo(f => ({ ...f, b2b_target: e.target.value }))} style={{ minHeight: '50px' }} />
+                    </div>
+                    <div className="field">
+                      <label className="label">Offre B2B</label>
+                      <textarea value={editInfo.b2b_offer} onChange={e => setEditInfo(f => ({ ...f, b2b_offer: e.target.value }))} style={{ minHeight: '50px' }} />
+                    </div>
+                    <div className="field">
+                      <label className="label">Valeur ajoutee B2B</label>
+                      <textarea value={editInfo.b2b_value} onChange={e => setEditInfo(f => ({ ...f, b2b_value: e.target.value }))} style={{ minHeight: '50px' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field">
+                      <label className="label">Public B2C</label>
+                      <textarea value={editInfo.b2c_target} onChange={e => setEditInfo(f => ({ ...f, b2c_target: e.target.value }))} style={{ minHeight: '50px' }} />
+                    </div>
+                    <div className="field">
+                      <label className="label">Experience client</label>
+                      <textarea value={editInfo.b2c_experience} onChange={e => setEditInfo(f => ({ ...f, b2c_experience: e.target.value }))} style={{ minHeight: '50px' }} />
+                    </div>
+                    <div className="field">
+                      <label className="label">Ambiance</label>
+                      <textarea value={editInfo.b2c_ambiance} onChange={e => setEditInfo(f => ({ ...f, b2c_ambiance: e.target.value }))} style={{ minHeight: '50px' }} />
+                    </div>
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Personas</label>
+                    <textarea value={editInfo.personas} onChange={e => setEditInfo(f => ({ ...f, personas: e.target.value }))} placeholder="Persona 1: Claire, 48 ans..." style={{ minHeight: '80px' }} />
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Services</label>
+                    <textarea value={editInfo.services} onChange={e => setEditInfo(f => ({ ...f, services: e.target.value }))} style={{ minHeight: '60px' }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field"><label className="label">Implantation</label><textarea value={editInfo.geo_location} onChange={e => setEditInfo(f => ({ ...f, geo_location: e.target.value }))} style={{ minHeight: '50px' }} /></div>
+                    <div className="field"><label className="label">Zone chalandise</label><textarea value={editInfo.geo_zone} onChange={e => setEditInfo(f => ({ ...f, geo_zone: e.target.value }))} style={{ minHeight: '50px' }} /></div>
+                    <div className="field"><label className="label">Environnement</label><textarea value={editInfo.geo_environment} onChange={e => setEditInfo(f => ({ ...f, geo_environment: e.target.value }))} style={{ minHeight: '50px' }} /></div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field"><label className="label">Style redactionnel</label><textarea value={editInfo.style_approach} onChange={e => setEditInfo(f => ({ ...f, style_approach: e.target.value }))} style={{ minHeight: '50px' }} /></div>
+                    <div className="field"><label className="label">Vocabulaire</label><textarea value={editInfo.style_vocabulary} onChange={e => setEditInfo(f => ({ ...f, style_vocabulary: e.target.value }))} style={{ minHeight: '50px' }} /></div>
                   </div>
                   <div className="field">
-                    <label className="label">Prix</label>
-                    <input value={editForm.product_price} onChange={e => setEditForm(f => ({ ...f, product_price: e.target.value }))} />
-                  </div>
-                  <div className="field">
-                    <label className="label">Reference</label>
-                    <input value={editForm.product_ref} onChange={e => setEditForm(f => ({ ...f, product_ref: e.target.value }))} />
+                    <label className="label">Avis clients</label>
+                    <textarea value={editInfo.reviews} onChange={e => setEditInfo(f => ({ ...f, reviews: e.target.value }))} style={{ minHeight: '40px' }} />
                   </div>
                 </div>
               )}
 
-              {editForm.branch === 'catalogue' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="field">
-                    <label className="label">Produit catalogue</label>
-                    <input value={editForm.cat_product} onChange={e => setEditForm(f => ({ ...f, cat_product: e.target.value }))} />
+              {/* Tab: SEO & Contenu */}
+              {editTab === 'seo' && (
+                <div className="fade-in">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div className="field"><label className="label">Categorie</label><input value={editSeo.category_title} onChange={e => setEditSeo(f => ({ ...f, category_title: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Statut</label><input value={editSeo.status} onChange={e => setEditSeo(f => ({ ...f, status: e.target.value }))} /></div>
+                    <div className="field"><label className="label">Location</label><input value={editSeo.location} onChange={e => setEditSeo(f => ({ ...f, location: e.target.value }))} /></div>
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Plan H2</label>
+                    <textarea value={editSeo.h2_plan} onChange={e => setEditSeo(f => ({ ...f, h2_plan: e.target.value }))} placeholder="H2-1 : ... H2-2 : ..." style={{ minHeight: '80px' }} />
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Keywords (volumes, competition)</label>
+                    <textarea value={editSeo.keywords_data} onChange={e => setEditSeo(f => ({ ...f, keywords_data: e.target.value }))} className="import-area" style={{ minHeight: '80px' }} />
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Brief SEO</label>
+                    <textarea value={editSeo.brief_seo} onChange={e => setEditSeo(f => ({ ...f, brief_seo: e.target.value }))} className="import-area" style={{ minHeight: '100px' }} />
+                  </div>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">Introduction</label>
+                    <textarea value={editSeo.article_intro} onChange={e => setEditSeo(f => ({ ...f, article_intro: e.target.value }))} style={{ minHeight: '60px' }} />
+                  </div>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <div key={n} className="field" style={{ marginBottom: '12px' }}>
+                      <label className="label">Partie {n}</label>
+                      <textarea value={editSeo[`article_part${n}`]} onChange={e => setEditSeo(f => ({ ...f, [`article_part${n}`]: e.target.value }))} style={{ minHeight: '60px' }} />
+                    </div>
+                  ))}
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label className="label">FAQ HTML</label>
+                    <textarea value={editSeo.faq_html} onChange={e => setEditSeo(f => ({ ...f, faq_html: e.target.value }))} className="import-area" style={{ minHeight: '80px' }} />
                   </div>
                   <div className="field">
-                    <label className="label">Ref catalogue</label>
-                    <input value={editForm.cat_ref} onChange={e => setEditForm(f => ({ ...f, cat_ref: e.target.value }))} />
+                    <label className="label">Prompts image</label>
+                    <textarea value={editSeo.image_prompts} onChange={e => setEditSeo(f => ({ ...f, image_prompts: e.target.value }))} style={{ minHeight: '50px' }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Import */}
+              {editTab === 'import' && (
+                <div className="fade-in">
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                    Collez un brief au format JSON pour remplir automatiquement tous les champs.
+                  </p>
+                  <textarea
+                    className="import-area"
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                    placeholder="Collez votre JSON ici..."
+                    style={{ minHeight: '200px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    <button onClick={handleCampaignImport} className="btn btn-primary btn-sm" disabled={!importText.trim()}>
+                      Parser et remplir
+                    </button>
+                    <button onClick={() => setImportText('')} className="btn btn-secondary btn-sm">Vider</button>
                   </div>
                 </div>
               )}
