@@ -72,6 +72,17 @@ export async function GET(request) {
     if (v) payload[k] = v
   }
 
+  // Internal linking: all other pages from the campaign
+  const otherLines = (targetCampaign.lines || []).filter(l => l.id !== targetLine.id && l.url)
+  if (otherLines.length > 0) {
+    payload.internal_links = otherLines.map(l => ({
+      url: l.url,
+      keyword: l.keyword_main || '',
+      h1: l.h1 || '',
+      city: l.city || '',
+    }))
+  }
+
   try {
     updateLine(targetCampaign.id, targetLine.id, { status: 'processing' })
     const res = await fetch(webhookUrl, {

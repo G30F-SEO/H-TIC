@@ -45,6 +45,17 @@ function buildPayload(campaign, line) {
     if (info[f]) payload[f] = info[f]
   }
 
+  // Internal linking: include all other pages from the campaign
+  const otherLines = (campaign.lines || []).filter(l => l.id !== line.id && l.url)
+  if (otherLines.length > 0) {
+    payload.internal_links = otherLines.map(l => ({
+      url: l.url,
+      keyword: l.keyword_main || '',
+      h1: l.h1 || '',
+      city: l.city || '',
+    }))
+  }
+
   return payload
 }
 
