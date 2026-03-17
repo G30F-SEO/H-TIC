@@ -226,3 +226,108 @@ button { font-family: var(--font-sans); cursor: pointer; border: none; }
   cursor: pointer;
   accent-color: var(--accent);
 }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--text-secondary); }
+
+.tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Import area */
+.import-area {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-height: 200px;
+  line-height: 1.5;
+  background: var(--bg);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--text-secondary);
+  resize: vertical;
+  width: 100%;
+}
+
+.import-area:focus {
+  border-color: var(--accent);
+  border-style: solid;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Section toggles */
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s;
+  user-select: none;
+}
+
+.section-toggle:hover { background: rgba(255,255,255,0.03); }
+
+.section-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 3px;
+  accent-color: var(--accent);
+}
+
+/* Preset buttons */
+.preset-btn {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preset-btn:hover { border-color: var(--border-strong); color: var(--text-secondary); }
+
+.preset-btn-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+/* Sub-section title */
+.sub-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  margin-top: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}

@@ -44,6 +44,20 @@ async function launchCampaign(campaign) {
     sentAt: new Date().toISOString(),
   }
 
+  // Enrich with info fields if present
+  const infoFields = ['context', 'b2b_target', 'b2b_offer', 'b2b_value', 'b2c_target', 'b2c_experience', 'b2c_ambiance', 'personas', 'services', 'geo_location', 'geo_zone', 'geo_environment', 'style_approach', 'style_relation', 'style_objective', 'style_vocabulary', 'style_promises', 'style_structure', 'style_storytelling', 'style_engagement', 'style_verb_tense', 'reviews', 'extra_info']
+  for (const f of infoFields) {
+    const val = campaign.info?.[f] || campaign[f]
+    if (val) payload[f] = val
+  }
+
+  // Enrich with SEO fields if present
+  const seoFields = ['category_title', 'h2_plan', 'status', 'links', 'catalogue_id', 'categories', 'location', 'keywords_data', 'serp_analysis', 'brief_seo', 'article_intro', 'article_part1', 'article_part2', 'article_part3', 'article_part4', 'article_part5', 'faq_html', 'image_prompts']
+  for (const f of seoFields) {
+    const val = campaign.seo?.[f] || campaign[f]
+    if (val) payload[f] = val
+  }
+
   try {
     const res = await fetch(webhookUrl, {
       method: 'POST',
