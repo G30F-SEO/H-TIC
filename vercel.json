@@ -1,8 +1,2 @@
 {
-  "crons": [
-    {
-      "path": "/api/campaigns/auto",
-      "schedule": "*/15 * * * *"
-    }
-  ]
 }
