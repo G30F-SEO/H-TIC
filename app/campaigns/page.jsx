@@ -170,6 +170,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
   const [autoMode, setAutoMode] = useState(false)
   const [autoInterval, setAutoInterval] = useState(15)
   const autoRef = useRef(null)
+  const editPanelRef = useRef(null)
 
   const handleI = (k) => (e) => setInfo(f => ({ ...f, [k]: e.target.value }))
   const handleM = (k) => (e) => setMeta(f => ({ ...f, [k]: e.target.value }))
@@ -255,6 +256,10 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
       product_name: line.product_name || '', product_price: line.product_price || '', product_ref: line.product_ref || '',
       cat_product: line.cat_product || '', cat_ref: line.cat_ref || '', cat_specs: line.cat_specs || '',
     })
+    // Scroll to edit panel after render
+    setTimeout(() => {
+      editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }
 
   async function saveLine(lineId) {
@@ -781,7 +786,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
 
           {/* Edit panel for selected line */}
           {editLine && (
-            <div className="card fade-in" style={{ marginTop: '14px' }}>
+            <div ref={editPanelRef} className="card fade-in" style={{ marginTop: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                 <div className="section-title" style={{ marginBottom: 0 }}>
                   Edition de la ligne
