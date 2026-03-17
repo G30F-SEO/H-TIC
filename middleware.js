@@ -4,7 +4,7 @@ import { jwtVerify } from 'jose'
 const PUBLIC_PATHS = ['/', '/api/auth', '/api/campaigns/auto']
 
 function getSecret() {
-  const secret = process.env.JWT_SECRET || 'dev-secret-change-me'
+  const secret = process.env.JWT_SECRET || 'htic-auto-secret-' + (process.env.APP_PASSWORD || 'default')
   return new TextEncoder().encode(secret)
 }
 
