@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { getArticle } from '@/lib/db'
+import { getArticle, ensureLoaded } from '@/lib/db'
 
 export async function GET(request, { params }) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  await ensureLoaded()
 
   const { id } = await params
   const article = getArticle(id)
@@ -33,10 +34,8 @@ function slugify(text) {
 }
 
 function buildFullHtml(article) {
-  // If full_html was provided by Make, use it
   if (article.full_html) return article.full_html
 
-  // Otherwise, assemble from sections
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>

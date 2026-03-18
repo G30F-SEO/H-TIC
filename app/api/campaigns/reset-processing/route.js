@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { getCampaigns, saveCampaigns, addLog } from '@/lib/db'
+import { getCampaigns, saveCampaigns, addLog, ensureLoaded } from '@/lib/db'
 
 // POST /api/campaigns/reset-processing — Reset all stuck "processing" lines back to "draft"
 export async function POST() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  await ensureLoaded()
   const campaigns = getCampaigns()
   let resetCount = 0
 
@@ -21,8 +22,8 @@ export async function POST() {
   }
 
   if (resetCount > 0) {
-    saveCampaigns(campaigns)
-    addLog('info', `Reset ${resetCount} ligne(s) bloquee(s) en "processing" → "draft"`)
+    await saveCampaigns(campaigns)
+    await addLog('info', `Reset ${resetCount} ligne(s) bloquee(s) en "processing" → "draft"`)
   }
 
   return NextResponse.json({ ok: true, resetCount })
