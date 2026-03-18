@@ -10,8 +10,24 @@ function getSecret() {
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl
+  const token = request.cookies.get('htic_session')?.value
 
-  // Allow public paths and static assets
+  // If user is on the login page, check if already authenticated
+  if (pathname === '/') {
+    if (token) {
+      try {
+        await jwtVerify(token, getSecret())
+        // Already logged in — redirect to dashboard
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      } catch {
+        // Invalid token — let them see login page
+        return NextResponse.next()
+      }
+    }
+    return NextResponse.next()
+  }
+
+  // Allow other public paths and static assets
   if (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith('/_next') ||
@@ -20,7 +36,6 @@ export async function middleware(request) {
     return NextResponse.next()
   }
 
-  const token = request.cookies.get('htic_session')?.value
   if (!token) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
