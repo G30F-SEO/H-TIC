@@ -69,15 +69,13 @@ export default function Nav() {
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 8px', marginBottom: '28px' }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '8px',
-          background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" strokeWidth="2.5">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-          </svg>
-        </div>
+        <img
+          src="/logo-htic.png"
+          alt="H-TIC"
+          width={32}
+          height={32}
+          style={{ borderRadius: '8px' }}
+        />
         <div>
           <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', lineHeight: 1.2 }}>H-TIC</div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Launcher</div>
@@ -106,6 +104,39 @@ export default function Nav() {
             </a>
           )
         })}
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        borderTop: '1px solid var(--border)',
+        paddingTop: '12px',
+        marginBottom: '8px',
+      }}>
+        <a
+          href="https://www.h-tic.fr/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 10px', borderRadius: '8px',
+            color: 'var(--text-muted)', textDecoration: 'none',
+            fontSize: '12px', transition: 'color 0.12s',
+          }}
+        >
+          <img
+            src="/logo-htic.png"
+            alt="H-TIC"
+            width={20}
+            height={20}
+            style={{ borderRadius: '4px', opacity: 0.7 }}
+          />
+          <span>h-tic.fr</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', opacity: 0.5 }}>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
       </div>
 
       {/* Logout */}

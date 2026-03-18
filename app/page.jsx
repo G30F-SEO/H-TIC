@@ -48,16 +48,13 @@ export default function LoginPage() {
 
       <div className="fade-in" style={{ width: '100%', maxWidth: '380px' }}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'var(--accent-soft)', border: '1px solid var(--accent-border)',
-            marginBottom: '16px',
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" strokeWidth="2">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-            </svg>
-          </div>
+          <img
+            src="/logo-htic.png"
+            alt="H-TIC"
+            width={56}
+            height={56}
+            style={{ borderRadius: '14px', marginBottom: '16px' }}
+          />
           <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '6px' }}>
             H-TIC Launcher
           </div>
@@ -115,6 +112,34 @@ export default function LoginPage() {
         <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', marginTop: '20px' }}>
           Session valide 8 heures
         </p>
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        padding: '14px',
+        borderTop: '1px solid var(--border)',
+        background: 'var(--bg)',
+      }}>
+        <a
+          href="https://www.h-tic.fr/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            color: 'var(--text-muted)', textDecoration: 'none',
+            fontSize: '12px', transition: 'color 0.15s',
+          }}
+        >
+          <img src="/logo-htic.png" alt="H-TIC" width={18} height={18} style={{ borderRadius: '4px', opacity: 0.7 }} />
+          <span>h-tic.fr</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.5 }}>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+        </a>
       </div>
     </div>
   )
