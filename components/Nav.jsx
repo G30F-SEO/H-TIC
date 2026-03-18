@@ -72,9 +72,8 @@ export default function Nav() {
         <img
           src="/logo-htic.png"
           alt="H-TIC"
-          width={32}
           height={32}
-          style={{ borderRadius: '8px' }}
+          style={{ objectFit: 'contain' }}
         />
         <div>
           <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', lineHeight: 1.2 }}>H-TIC</div>
@@ -126,9 +125,8 @@ export default function Nav() {
           <img
             src="/logo-htic.png"
             alt="H-TIC"
-            width={20}
             height={20}
-            style={{ borderRadius: '4px', opacity: 0.7 }}
+            style={{ objectFit: 'contain', opacity: 0.7 }}
           />
           <span>h-tic.fr</span>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 'auto', opacity: 0.5 }}>
