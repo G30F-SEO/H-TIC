@@ -514,8 +514,6 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
     error: lines.filter(l => l.status === 'error').length,
   }
 
-  const anyProcessing = stats.processing > 0
-
   const branchInfo = BRANCHES.find(b => b.id === meta.branch) || BRANCHES[0]
 
   return (
@@ -781,7 +779,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
               </>
             )}
             <div style={{ flex: 1 }} />
-            <button onClick={launchQueued} disabled={launching || stats.queued === 0 || anyProcessing} className="btn btn-primary btn-sm">
+            <button onClick={launchQueued} disabled={launching || stats.queued === 0} className="btn btn-primary btn-sm">
               {launching ? (
                 <><svg className="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Lancement...</>
               ) : (
@@ -847,10 +845,10 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button
                                 onClick={() => isEditing ? setEditLine(null) : startEditLine(line)}
-                                disabled={anyProcessing}
+                                disabled={line.status === 'processing'}
                                 className={`btn btn-sm ${isEditing ? 'btn-primary' : 'btn-secondary'}`}
-                                style={{ padding: '4px 8px', opacity: anyProcessing ? 0.4 : undefined }}
-                                title={anyProcessing ? 'Generation en cours...' : isEditing ? 'Fermer' : 'Modifier'}
+                                style={{ padding: '4px 8px', opacity: line.status === 'processing' ? 0.4 : undefined }}
+                                title={line.status === 'processing' ? 'Generation en cours...' : isEditing ? 'Fermer' : 'Modifier'}
                               >
                                 {isEditing ? (
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -863,10 +861,10 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                               </button>
                               <button
                                 onClick={() => launchLine(line.id)}
-                                disabled={launching || !line.url || !line.keyword_main || anyProcessing}
+                                disabled={launching || !line.url || !line.keyword_main || line.status === 'processing'}
                                 className="btn btn-primary btn-sm"
-                                style={{ padding: '4px 8px', opacity: anyProcessing ? 0.4 : undefined }}
-                                title={anyProcessing ? 'Generation en cours...' : 'Lancer'}
+                                style={{ padding: '4px 8px', opacity: line.status === 'processing' ? 0.4 : undefined }}
+                                title={line.status === 'processing' ? 'Generation en cours...' : 'Lancer'}
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
