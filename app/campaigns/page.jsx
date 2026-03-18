@@ -196,7 +196,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
   }
 
   // Import JSON
-  function handleImport() {
+  async function handleImport() {
     if (!importText.trim()) return
     try {
       const parsed = JSON.parse(importText)
@@ -221,8 +221,32 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
       setInfo(newInfo)
 
       // Import lines if present
-      if (Array.isArray(parsed.lines)) {
-        showAlert(`Import reussi — ${Object.values(newInfo).filter(Boolean).length} champs info + ${parsed.lines.length} lignes detectees`)
+      if (Array.isArray(parsed.lines) && parsed.lines.length > 0) {
+        // Create each line via API
+        let imported = 0
+        for (const lineData of parsed.lines) {
+          try {
+            const res = await fetch(`/api/campaigns/${campaign.id}/lines`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                url: lineData.url || '', city: lineData.city || '',
+                keyword_main: lineData.keyword_main || '', keywords_sec: lineData.keywords_sec || '',
+                intent: lineData.intent || '', h1: lineData.h1 || '', extra: lineData.extra || '',
+                product_name: lineData.product_name || '', product_price: lineData.product_price || '',
+                product_ref: lineData.product_ref || '',
+                cat_product: lineData.cat_product || '', cat_ref: lineData.cat_ref || '',
+                cat_specs: lineData.cat_specs || '',
+              }),
+            })
+            if (res.ok) {
+              const line = await res.json()
+              setLines(prev => [...prev, line])
+              imported++
+            }
+          } catch { /* skip failed line */ }
+        }
+        showAlert(`Import reussi — ${Object.values(newInfo).filter(Boolean).length} champs info + ${imported} lignes importees`)
       } else {
         showAlert(`Import reussi — ${Object.values(newInfo).filter(Boolean).length} champs info detectes`)
       }
@@ -234,6 +258,16 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
   // --- Lines management ---
   async function addNewLine() {
     try {
+      // Auto-save current line if being edited
+      if (editLine) {
+        await fetch(`/api/campaigns/${campaign.id}/lines`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lineId: editLine, ...editForm }),
+        })
+        setLines(prev => prev.map(l => l.id === editLine ? { ...l, ...editForm } : l))
+      }
+
       const res = await fetch(`/api/campaigns/${campaign.id}/lines`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -409,6 +443,33 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
     selected.size === lines.length ? setSelected(new Set()) : setSelected(new Set(lines.map(l => l.id)))
   }
 
+  function exportCampaignJson() {
+    const exportData = {
+      name: campaign.name,
+      branch: campaign.branch,
+      sector: campaign.sector,
+      tone: campaign.tone,
+      word_count: campaign.word_count,
+      lang: campaign.lang,
+      description: campaign.description,
+      info: campaign.info || {},
+      lines: (campaign.lines || lines).map(l => ({
+        url: l.url, city: l.city, keyword_main: l.keyword_main,
+        keywords_sec: l.keywords_sec, intent: l.intent, h1: l.h1,
+        extra: l.extra,
+        product_name: l.product_name, product_price: l.product_price, product_ref: l.product_ref,
+        cat_product: l.cat_product, cat_ref: l.cat_ref, cat_specs: l.cat_specs,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${campaign.name || 'campagne'}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const stats = {
     total: lines.length,
     draft: lines.filter(l => l.status === 'draft').length,
@@ -436,6 +497,9 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
             {branchInfo.label} · {meta.sector || '—'} · Cree le {new Date(campaign.createdAt).toLocaleDateString('fr')}
           </p>
         </div>
+        <button onClick={exportCampaignJson} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '13px' }}>
+          Exporter JSON
+        </button>
       </div>
 
       {/* Phase tabs */}

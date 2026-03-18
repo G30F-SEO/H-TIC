@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [alert, setAlert] = useState(null)
   const [callbackUrl, setCallbackUrl] = useState('')
   const [copied, setCopied] = useState(false)
+  const [callbackStatus, setCallbackStatus] = useState('idle')
 
   // Detect callback URL from current domain
   useEffect(() => {
@@ -57,6 +58,34 @@ export default function SettingsPage() {
     } catch {
       setWebhookStatus(s => ({ ...s, [branch]: 'error' }))
       showAlert('Erreur reseau lors du test.', 'error')
+    }
+  }
+
+  async function testCallback() {
+    setCallbackStatus('loading')
+    try {
+      const res = await fetch('/api/webhook/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignId: 'test_ping',
+          lineId: 'test_ping',
+          status: 'done',
+          meta_title: 'Test de reception H-TIC',
+          h1: 'Test webhook callback',
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setCallbackStatus('ok')
+        showAlert('Webhook de retour operationnel ! La reception fonctionne.', 'success')
+      } else {
+        setCallbackStatus('error')
+        showAlert(`Erreur callback : ${data.error || res.status}`, 'error')
+      }
+    } catch {
+      setCallbackStatus('error')
+      showAlert('Erreur reseau lors du test callback.', 'error')
     }
   }
 
@@ -109,6 +138,8 @@ export default function SettingsPage() {
               Les URLs webhook sont configurees via les <strong style={{ color: 'var(--text-primary)' }}>variables d'environnement Vercel</strong>,
               pas dans l'interface (pour des raisons de securite). Allez dans votre projet Vercel &rarr;{' '}
               <strong style={{ color: 'var(--text-primary)' }}>Settings &rarr; Environment Variables</strong> pour les renseigner.
+              <br /><br />
+              <strong style={{ color: 'var(--text-primary)' }}>Un seul webhook Make suffit</strong> — configurez uniquement celui correspondant a votre type de branche (vitrine, e-commerce ou catalogue). Les autres peuvent rester vides.
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -186,6 +217,13 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <button onClick={testCallback} className="btn btn-secondary btn-sm" disabled={callbackStatus === 'loading'} style={{ opacity: callbackStatus === 'loading' ? 0.5 : 1 }}>
+                {callbackStatus === 'loading' ? 'Test...' : 'Tester la reception'}
+              </button>
+              <StatusDot status={callbackStatus} />
+            </div>
+
             <div style={{
               background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px',
               padding: '14px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.7',
@@ -252,7 +290,7 @@ export default function SettingsPage() {
                 'Allez dans Settings → Environment Variables',
                 'Ajoutez APP_PASSWORD avec votre mot de passe choisi',
                 'Ajoutez JWT_SECRET avec une chaine aleatoire longue',
-                'Ajoutez les 3 webhooks : WEBHOOK_VITRINE, WEBHOOK_ECOMMERCE, WEBHOOK_CATALOGUE',
+                'Ajoutez le webhook correspondant a votre branche : WEBHOOK_VITRINE, WEBHOOK_ECOMMERCE ou WEBHOOK_CATALOGUE',
                 'Redéployez (Deployments → Redeploy)',
                 'Testez chaque webhook depuis cette page',
               ].map((text, i) => (

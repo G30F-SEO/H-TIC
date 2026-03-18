@@ -24,6 +24,12 @@ export default function ArticlePage() {
     navigator.clipboard.writeText(text)
   }
 
+  function stripHtml(html) {
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    return tmp.textContent || tmp.innerText || ''
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -160,9 +166,22 @@ export default function ArticlePage() {
                 <div key={sec.key} className="card">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                     <span className="section-title" style={{ marginBottom: 0 }}>{sec.label}</span>
-                    <button onClick={() => copySection(sec.value)} className="btn btn-secondary btn-sm" style={{ padding: '3px 8px', fontSize: '11px' }}>
-                      Copier
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {sec.html ? (
+                        <>
+                          <button onClick={() => copySection(sec.value)} className="btn btn-secondary btn-sm" style={{ padding: '3px 8px', fontSize: '11px' }}>
+                            Copier HTML
+                          </button>
+                          <button onClick={() => copySection(stripHtml(sec.value))} className="btn btn-secondary btn-sm" style={{ padding: '3px 8px', fontSize: '11px' }}>
+                            Copier texte
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => copySection(sec.value)} className="btn btn-secondary btn-sm" style={{ padding: '3px 8px', fontSize: '11px' }}>
+                          Copier
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {sec.html ? (
                     <div

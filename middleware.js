@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const PUBLIC_PATHS = ['/', '/api/auth', '/api/campaigns/auto']
+const PUBLIC_PATHS = ['/', '/api/auth', '/api/campaigns/auto', '/api/webhook/callback']
 
 function getSecret() {
   const secret = process.env.JWT_SECRET || 'htic-auto-secret-' + (process.env.APP_PASSWORD || 'default')
