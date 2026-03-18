@@ -94,7 +94,7 @@ async function launchLine(campaign, line) {
       logger.success(`Ligne "${line.keyword_main}" lancee (${campaign.name})`, {
         campaignId: campaign.id, lineId: line.id, makeStatus: res.status,
       })
-      return { id: line.id, status: 'done' }
+      return { id: line.id, status: 'processing' }
     } else {
       const error = `HTTP ${res.status} depuis Make`
       updateLine(campaign.id, line.id, { status: 'error', error, makeStatus: res.status, completedAt: now })
