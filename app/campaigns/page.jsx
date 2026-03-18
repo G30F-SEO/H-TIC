@@ -341,6 +341,8 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
   }
 
   async function launchLine(lineId) {
+    // Immediately set to processing in UI
+    setLines(prev => prev.map(l => l.id === lineId ? { ...l, status: 'processing' } : l))
     setLaunching(true)
     try {
       const res = await fetch('/api/campaigns/launch', {
@@ -355,11 +357,13 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
           return r ? { ...l, status: r.status, error: r.error } : l
         }))
         const r = data.results[0]
-        if (r?.status === 'done') showAlert('Ligne lancee avec succes')
-        else showAlert(`Erreur: ${r?.error}`, 'error')
+        if (r?.status === 'processing') showAlert('Generation lancee — en attente du retour Make')
+        else if (r?.status === 'error') showAlert(`Erreur: ${r?.error}`, 'error')
+        else showAlert('Ligne lancee')
       }
     } catch {
       showAlert('Erreur lancement', 'error')
+      setLines(prev => prev.map(l => l.id === lineId ? { ...l, status: 'error' } : l))
     } finally {
       setLaunching(false)
     }
@@ -369,6 +373,8 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
     const queuedIds = lines.filter(l => l.status === 'queued').map(l => l.id)
     if (!queuedIds.length) { showAlert('Aucune ligne en file', 'error'); return }
     setLaunching(true)
+    // Immediately mark all queued as processing
+    setLines(prev => prev.map(l => queuedIds.includes(l.id) ? { ...l, status: 'processing' } : l))
     try {
       const res = await fetch('/api/campaigns/launch', {
         method: 'POST',
@@ -381,9 +387,10 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
           const r = data.results.find(x => x.id === l.id)
           return r ? { ...l, status: r.status, error: r.error } : l
         }))
-        const ok = data.results.filter(r => r.status === 'done').length
+        const ok = data.results.filter(r => r.status === 'processing').length
         const err = data.results.filter(r => r.status === 'error').length
-        showAlert(`${ok} reussi(s), ${err} erreur(s)`, err > 0 ? 'error' : 'success')
+        if (err > 0) showAlert(`${ok} en cours, ${err} erreur(s)`, 'error')
+        else showAlert(`${ok} generation(s) lancee(s) — en attente du retour Make`)
       }
     } catch {
       showAlert('Erreur lancement', 'error')
@@ -436,6 +443,34 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
     return () => { if (autoRef.current) clearInterval(autoRef.current) }
   }, [])
 
+  // Poll for status updates when lines are processing
+  const pollRef = useRef(null)
+  useEffect(() => {
+    const hasProcessing = lines.some(l => l.status === 'processing')
+    if (hasProcessing && !pollRef.current) {
+      pollRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/campaigns/${campaign.id}/lines`)
+          if (res.ok) {
+            const freshLines = await res.json()
+            setLines(freshLines)
+            // Stop polling if nothing is processing anymore
+            if (!freshLines.some(l => l.status === 'processing')) {
+              clearInterval(pollRef.current)
+              pollRef.current = null
+            }
+          }
+        } catch { /* ignore poll errors */ }
+      }, 10000) // Poll every 10 seconds
+    } else if (!hasProcessing && pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    }
+  }, [lines, campaign.id])
+
   function toggleSelect(id) {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
@@ -474,6 +509,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
     total: lines.length,
     draft: lines.filter(l => l.status === 'draft').length,
     queued: lines.filter(l => l.status === 'queued').length,
+    processing: lines.filter(l => l.status === 'processing').length,
     done: lines.filter(l => l.status === 'done').length,
     error: lines.filter(l => l.status === 'error').length,
   }
@@ -723,6 +759,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
             <span>{stats.total} total</span>
             <span>{stats.draft} brouillon(s)</span>
             <span style={{ color: 'var(--warning)' }}>{stats.queued} en file</span>
+            {stats.processing > 0 && <span style={{ color: 'var(--blue)' }}>{stats.processing} en cours</span>}
             <span style={{ color: 'var(--success)' }}>{stats.done} termine(s)</span>
             <span style={{ color: 'var(--danger)' }}>{stats.error} erreur(s)</span>
           </div>
@@ -823,10 +860,10 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                               </button>
                               <button
                                 onClick={() => launchLine(line.id)}
-                                disabled={launching || !line.url || !line.keyword_main}
+                                disabled={launching || !line.url || !line.keyword_main || line.status === 'processing'}
                                 className="btn btn-primary btn-sm"
-                                style={{ padding: '4px 8px' }}
-                                title="Lancer"
+                                style={{ padding: '4px 8px', opacity: line.status === 'processing' ? 0.4 : undefined }}
+                                title={line.status === 'processing' ? 'Generation en cours...' : 'Lancer'}
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
