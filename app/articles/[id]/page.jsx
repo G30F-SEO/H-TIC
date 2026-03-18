@@ -20,6 +20,29 @@ export default function ArticlePage() {
     window.open(`/api/articles/${id}?format=html`, '_blank')
   }
 
+  function downloadDoc() {
+    const html = buildRawHtml(article)
+    const fullDoc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${article.keyword || 'Article'}</title></head><body>${html}</body></html>`
+    const blob = new Blob([fullDoc], { type: 'application/msword' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${article.keyword || 'article'}.doc`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function downloadTxt() {
+    const text = buildPlainText(article)
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${article.keyword || 'article'}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function copySection(text) {
     navigator.clipboard.writeText(text)
   }
@@ -85,14 +108,22 @@ export default function ArticlePage() {
                 <span>Genere le {new Date(article.updatedAt).toLocaleDateString('fr')}</span>
               </div>
             </div>
-            <button onClick={downloadHtml} className="btn btn-primary btn-sm">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Telecharger HTML
-            </button>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button onClick={downloadHtml} className="btn btn-primary btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                .HTML
+              </button>
+              <button onClick={downloadDoc} className="btn btn-secondary btn-sm">
+                .DOC
+              </button>
+              <button onClick={downloadTxt} className="btn btn-secondary btn-sm">
+                .TXT
+              </button>
+            </div>
           </div>
 
           {/* Meta card */}
@@ -142,16 +173,21 @@ export default function ArticlePage() {
 
           {/* Preview */}
           {view === 'preview' && (
-            <div className="card fade-in" style={{ padding: '32px' }}>
+            <div className="fade-in" style={{
+              padding: '40px', borderRadius: '10px',
+              background: '#ffffff', color: '#1a1a1a',
+              border: '1px solid var(--border)',
+            }}>
               <div style={{
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                lineHeight: '1.7', color: '#1a1a2e', fontSize: '15px',
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                lineHeight: '1.8', fontSize: '16px', color: '#222',
+                maxWidth: '750px', margin: '0 auto',
               }}>
-                {article.h1 && <h1 style={{ fontSize: '1.8em', marginBottom: '0.5em', color: '#16213e', fontWeight: '700' }}>{article.h1}</h1>}
-                {article.intro && <div dangerouslySetInnerHTML={{ __html: article.intro }} style={{ marginBottom: '1.5em' }} />}
-                {article.body && <div dangerouslySetInnerHTML={{ __html: article.body }} />}
+                {article.h1 && <h1 style={{ fontSize: '1.7em', marginBottom: '0.6em', color: '#111', fontWeight: '700', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>{article.h1}</h1>}
+                {article.intro && <div dangerouslySetInnerHTML={{ __html: article.intro }} style={{ marginBottom: '1.5em', color: '#333' }} />}
+                {article.body && <div dangerouslySetInnerHTML={{ __html: article.body }} style={{ color: '#222' }} />}
                 {article.faq && (
-                  <div style={{ background: 'rgba(108,99,255,0.05)', borderRadius: '8px', padding: '20px', marginTop: '2em' }}>
+                  <div style={{ background: '#f5f5f7', borderRadius: '8px', padding: '24px', marginTop: '2em', color: '#222' }}>
                     <div dangerouslySetInnerHTML={{ __html: article.faq }} />
                   </div>
                 )}
@@ -233,4 +269,20 @@ function buildRawHtml(article) {
   if (article.body) html += `${article.body}\n\n`
   if (article.faq) html += `${article.faq}\n`
   return html.trim()
+}
+
+function buildPlainText(article) {
+  const strip = (html) => {
+    if (!html) return ''
+    return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim()
+  }
+  let text = ''
+  if (article.meta_title) text += `Meta titre : ${article.meta_title}\n`
+  if (article.meta_description) text += `Meta description : ${article.meta_description}\n`
+  text += '\n'
+  if (article.h1) text += `${article.h1}\n${'='.repeat(article.h1.length)}\n\n`
+  if (article.intro) text += `${strip(article.intro)}\n\n`
+  if (article.body) text += `${strip(article.body)}\n\n`
+  if (article.faq) text += `--- FAQ ---\n${strip(article.faq)}\n`
+  return text.trim()
 }
