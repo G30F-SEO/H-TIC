@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getCampaigns, updateLine, addHistoryEntry } from '@/lib/db'
+import { getCampaigns, updateLine, addHistoryEntry, ensureLoaded } from '@/lib/db'
 import { getWebhookUrl } from '@/lib/webhooks'
 import { logger } from '@/lib/logger'
 
@@ -12,6 +12,7 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  await ensureLoaded()
   const campaigns = getCampaigns()
 
   // Find next queued line across all campaigns
@@ -34,7 +35,7 @@ export async function GET(request) {
   const webhookUrl = getWebhookUrl(targetCampaign.branch)
   if (!webhookUrl) {
     const error = `Webhook non configure pour "${targetCampaign.branch}"`
-    updateLine(targetCampaign.id, targetLine.id, { status: 'error', error })
+    await updateLine(targetCampaign.id, targetLine.id, { status: 'error', error })
     logger.error(`Cron: ${error}`, { campaignId: targetCampaign.id, lineId: targetLine.id })
     return NextResponse.json({ error, launched: 0 })
   }
@@ -85,7 +86,7 @@ export async function GET(request) {
   }
 
   try {
-    updateLine(targetCampaign.id, targetLine.id, { status: 'processing' })
+    await updateLine(targetCampaign.id, targetLine.id, { status: 'processing' })
     const res = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -94,19 +95,19 @@ export async function GET(request) {
 
     const now = new Date().toISOString()
     if (res.ok) {
-      updateLine(targetCampaign.id, targetLine.id, { status: 'processing', launchedAt: now, makeStatus: res.status })
-      addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'sent', makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
+      await updateLine(targetCampaign.id, targetLine.id, { status: 'processing', launchedAt: now, makeStatus: res.status })
+      await addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'sent', makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
       logger.success(`Cron: "${targetLine.keyword_main}" lance (${targetCampaign.name})`, { campaignId: targetCampaign.id, lineId: targetLine.id })
       return NextResponse.json({ ok: true, launched: 1, company: targetCampaign.name, keyword: targetLine.keyword_main })
     } else {
       const error = `HTTP ${res.status}`
-      updateLine(targetCampaign.id, targetLine.id, { status: 'error', error, completedAt: now, makeStatus: res.status })
-      addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'error', error, makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
+      await updateLine(targetCampaign.id, targetLine.id, { status: 'error', error, completedAt: now, makeStatus: res.status })
+      await addHistoryEntry({ branch: targetCampaign.branch, company: targetCampaign.name, keyword_main: targetLine.keyword_main, url: targetLine.url, status: 'error', error, makeStatus: res.status, payload, campaignId: targetCampaign.id, lineId: targetLine.id })
       logger.error(`Cron: echec "${targetLine.keyword_main}": ${error}`, { campaignId: targetCampaign.id, lineId: targetLine.id })
       return NextResponse.json({ error, launched: 0 })
     }
   } catch (err) {
-    updateLine(targetCampaign.id, targetLine.id, { status: 'error', error: err.message, completedAt: new Date().toISOString() })
+    await updateLine(targetCampaign.id, targetLine.id, { status: 'error', error: err.message, completedAt: new Date().toISOString() })
     logger.error(`Cron: erreur reseau "${targetLine.keyword_main}": ${err.message}`, { campaignId: targetCampaign.id, lineId: targetLine.id })
     return NextResponse.json({ error: err.message, launched: 0 })
   }

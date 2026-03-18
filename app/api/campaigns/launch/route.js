@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { getCampaigns, getCampaign, updateLine, addHistoryEntry } from '@/lib/db'
+import { getCampaigns, getCampaign, updateLine, addHistoryEntry, ensureLoaded } from '@/lib/db'
 import { getWebhookUrl } from '@/lib/webhooks'
 import { logger } from '@/lib/logger'
 
 // Build the full payload by merging campaign info + line data
 function buildPayload(campaign, line) {
   const payload = {
-    // Campaign-level
     branch: campaign.branch,
     company: campaign.name,
     sector: campaign.sector || '',
@@ -15,7 +14,6 @@ function buildPayload(campaign, line) {
     word_count: campaign.word_count || '1200',
     tone: campaign.tone || 'expert',
     language: campaign.lang || 'fr',
-    // Line-level
     url: line.url,
     city: line.city || '',
     keyword_main: line.keyword_main,
@@ -23,15 +21,12 @@ function buildPayload(campaign, line) {
     intent: line.intent || '',
     h1: line.h1 || '',
     extra_instructions: line.extra || '',
-    // E-commerce
     product_name: line.product_name || '',
     product_price: line.product_price || '',
     product_ref: line.product_ref || '',
-    // Catalogue
     cat_product: line.cat_product || '',
     cat_ref: line.cat_ref || '',
     cat_specs: line.cat_specs || '',
-    // Meta
     source: 'H-TIC-Launcher',
     campaignId: campaign.id,
     lineId: line.id,
@@ -39,14 +34,12 @@ function buildPayload(campaign, line) {
     callback_url: `${process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/webhook/callback`,
   }
 
-  // Merge all info fields from campaign
   const info = campaign.info || {}
   const infoFields = ['context', 'b2b_target', 'b2b_offer', 'b2b_value', 'b2c_target', 'b2c_experience', 'b2c_ambiance', 'personas', 'services', 'geo_location', 'geo_zone', 'geo_environment', 'style_approach', 'style_relation', 'style_objective', 'style_vocabulary', 'style_promises', 'style_structure', 'style_storytelling', 'style_engagement', 'style_verb_tense', 'reviews', 'extra_info']
   for (const f of infoFields) {
     if (info[f]) payload[f] = info[f]
   }
 
-  // Internal linking: include all other pages from the campaign
   const otherLines = (campaign.lines || []).filter(l => l.id !== line.id && l.url)
   if (otherLines.length > 0) {
     payload.internal_links = otherLines.map(l => ({
@@ -65,11 +58,11 @@ async function launchLine(campaign, line) {
   if (!webhookUrl) {
     const error = `Webhook non configure pour "${campaign.branch}"`
     logger.error(error, { campaignId: campaign.id, lineId: line.id })
-    updateLine(campaign.id, line.id, { status: 'error', error, completedAt: new Date().toISOString() })
+    await updateLine(campaign.id, line.id, { status: 'error', error, completedAt: new Date().toISOString() })
     return { id: line.id, status: 'error', error }
   }
 
-  updateLine(campaign.id, line.id, { status: 'processing' })
+  await updateLine(campaign.id, line.id, { status: 'processing' })
   const payload = buildPayload(campaign, line)
 
   try {
@@ -82,10 +75,10 @@ async function launchLine(campaign, line) {
     const now = new Date().toISOString()
 
     if (res.ok) {
-      updateLine(campaign.id, line.id, {
+      await updateLine(campaign.id, line.id, {
         status: 'processing', launchedAt: now, error: null, makeStatus: res.status,
       })
-      addHistoryEntry({
+      await addHistoryEntry({
         branch: campaign.branch, company: campaign.name,
         keyword_main: line.keyword_main, url: line.url,
         status: 'sent', makeStatus: res.status, error: null,
@@ -97,8 +90,8 @@ async function launchLine(campaign, line) {
       return { id: line.id, status: 'processing' }
     } else {
       const error = `HTTP ${res.status} depuis Make`
-      updateLine(campaign.id, line.id, { status: 'error', error, makeStatus: res.status, completedAt: now })
-      addHistoryEntry({
+      await updateLine(campaign.id, line.id, { status: 'error', error, makeStatus: res.status, completedAt: now })
+      await addHistoryEntry({
         branch: campaign.branch, company: campaign.name,
         keyword_main: line.keyword_main, url: line.url,
         status: 'error', makeStatus: res.status, error,
@@ -109,8 +102,8 @@ async function launchLine(campaign, line) {
     }
   } catch (err) {
     const error = err.message
-    updateLine(campaign.id, line.id, { status: 'error', error, completedAt: new Date().toISOString() })
-    addHistoryEntry({
+    await updateLine(campaign.id, line.id, { status: 'error', error, completedAt: new Date().toISOString() })
+    await addHistoryEntry({
       branch: campaign.branch, company: campaign.name,
       keyword_main: line.keyword_main, url: line.url,
       status: 'error', error, payload, campaignId: campaign.id, lineId: line.id,
@@ -124,6 +117,7 @@ export async function POST(request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  await ensureLoaded()
   const body = await request.json()
 
   // Mode "next" : lance la prochaine ligne en file (tous campagnes confondues)

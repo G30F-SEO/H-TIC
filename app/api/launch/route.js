@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { getWebhookUrl } from '@/lib/webhooks'
-import { addHistoryEntry } from '@/lib/db'
+import { addHistoryEntry, ensureLoaded } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
 export async function POST(request) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  await ensureLoaded()
   const payload = await request.json()
   const { branch } = payload
 
@@ -38,7 +39,7 @@ export async function POST(request) {
     errorMessage = err.message
   }
 
-  const entry = addHistoryEntry({
+  const entry = await addHistoryEntry({
     branch,
     company: payload.company || 'Inconnu',
     keyword_main: payload.keyword_main || '',

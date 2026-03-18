@@ -25,6 +25,10 @@ export default function SettingsPage() {
   const [callbackUrl, setCallbackUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [callbackStatus, setCallbackStatus] = useState('idle')
+  const [dbStatus, setDbStatus] = useState('idle')
+  const [dbMessage, setDbMessage] = useState('')
+  const [dbSql, setDbSql] = useState(null)
+  const [resetting, setResetting] = useState(false)
 
   // Detect callback URL from current domain
   useEffect(() => {
@@ -302,14 +306,95 @@ export default function SettingsPage() {
             </ol>
           </div>
 
-          {/* Note persistence */}
-          <div className="card">
-            <div className="section-title">Note sur la persistance</div>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.7' }}>
-              Par defaut, l'historique et les campagnes sont stockes dans <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg)', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>/tmp</code> sur
-              Vercel — ils se reinitialisent a chaque redeploiement. Pour une persistance complete, connectez une base de donnees
-              (recommande : <strong style={{ color: 'var(--text-primary)' }}>Vercel KV</strong> ou <strong style={{ color: 'var(--text-primary)' }}>Supabase</strong>).
+          {/* Reset stuck processing */}
+          <div className="card" style={{ marginBottom: '12px' }}>
+            <div className="section-title">Reinitialisation</div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '14px' }}>
+              Si une generation est bloquee en <strong style={{ color: 'var(--blue)' }}>"En cours"</strong> et que le callback Make n'est jamais revenu,
+              utilisez ce bouton pour remettre toutes les lignes bloquees en brouillon.
             </p>
+            <button
+              onClick={async () => {
+                setResetting(true)
+                try {
+                  const res = await fetch('/api/campaigns/reset-processing', { method: 'POST' })
+                  const data = await res.json()
+                  if (data.ok) {
+                    showAlert(data.resetCount > 0
+                      ? `${data.resetCount} ligne(s) reinitialise(s) en brouillon.`
+                      : 'Aucune ligne bloquee trouvee.', 'success')
+                  } else {
+                    showAlert('Erreur : ' + (data.error || 'inconnue'), 'error')
+                  }
+                } catch {
+                  showAlert('Erreur reseau.', 'error')
+                }
+                setResetting(false)
+              }}
+              className="btn btn-secondary btn-sm"
+              disabled={resetting}
+              style={{ opacity: resetting ? 0.5 : 1 }}
+            >
+              {resetting ? 'Reinitialisation...' : 'Reinitialiser les lignes bloquees'}
+            </button>
+          </div>
+
+          {/* Supabase persistence */}
+          <div className="card">
+            <div className="section-title">Base de donnees (Supabase)</div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '14px' }}>
+              Les campagnes et articles sont sauvegardes dans <strong style={{ color: 'var(--text-primary)' }}>Supabase</strong> pour
+              persister entre les redeploiements.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <button
+                onClick={async () => {
+                  setDbStatus('loading')
+                  try {
+                    const res = await fetch('/api/setup')
+                    const data = await res.json()
+                    if (data.tableExists) {
+                      setDbStatus('ok')
+                      setDbMessage('Supabase connecte — persistance active')
+                    } else if (data.configured) {
+                      setDbStatus('error')
+                      setDbMessage(data.sql ? 'Table manquante — cliquez "Creer la table"' : (data.error || 'Erreur'))
+                      setDbSql(data.sql || null)
+                    } else {
+                      setDbStatus('error')
+                      setDbMessage('Supabase non configure — ajoutez les variables d\'environnement')
+                    }
+                  } catch {
+                    setDbStatus('error')
+                    setDbMessage('Erreur connexion')
+                  }
+                }}
+                className="btn btn-secondary btn-sm"
+                disabled={dbStatus === 'loading'}
+              >
+                {dbStatus === 'loading' ? 'Test...' : 'Tester la connexion'}
+              </button>
+              <StatusDot status={dbStatus} />
+              {dbMessage && <span style={{ fontSize: '12px', color: dbStatus === 'ok' ? 'var(--success)' : 'var(--text-muted)' }}>{dbMessage}</span>}
+            </div>
+            {dbSql && dbStatus === 'error' && (
+              <div style={{ marginBottom: '14px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Copiez ce SQL et executez-le dans <strong style={{ color: 'var(--text-primary)' }}>Supabase → SQL Editor</strong> :
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <pre style={{
+                    flex: 1, fontFamily: 'var(--font-mono)', fontSize: '11px', background: 'var(--bg)',
+                    padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)',
+                    color: 'var(--text-secondary)', lineHeight: '1.5', whiteSpace: 'pre-wrap',
+                  }}>{dbSql}</pre>
+                  <button onClick={() => { navigator.clipboard.writeText(dbSql); showAlert('SQL copie !') }} className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }}>Copier</button>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  Puis retestez la connexion ci-dessus pour verifier.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </main>
