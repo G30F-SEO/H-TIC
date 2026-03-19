@@ -15,11 +15,18 @@ export async function GET(request) {
   await ensureLoaded()
   const campaigns = getCampaigns()
 
-  // Find next queued line across all campaigns
+  const now = new Date()
+
+  // Find next queued line across all campaigns (including scheduled lines whose time has passed)
   let targetCampaign = null
   let targetLine = null
   for (const camp of campaigns) {
-    const line = (camp.lines || []).find(l => l.status === 'queued')
+    const line = (camp.lines || []).find(l => {
+      if (l.status === 'queued') return true
+      // Scheduled lines: status is 'scheduled' and scheduledAt has passed
+      if (l.status === 'scheduled' && l.scheduledAt && new Date(l.scheduledAt) <= now) return true
+      return false
+    })
     if (line) {
       targetCampaign = camp
       targetLine = line

@@ -40,8 +40,8 @@ export async function POST(request) {
 
   if (!branch) return NextResponse.json({ error: 'Branch required' }, { status: 400 })
 
-  // Use client webhook if set, otherwise fall back to global
-  const webhookUrl = client.webhookUrl || getWebhookUrl(branch)
+  // Use client's dedicated webhook (Make auto-provisioned or manual), fallback to global
+  const webhookUrl = getWebhookUrl(branch, client)
   if (!webhookUrl) {
     return NextResponse.json({ error: 'Webhook non configure. Contactez H-TIC.' }, { status: 400 })
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { ensureLoaded, getClients, addClient, updateClient, deleteClients } from '@/lib/db'
+import { ensureLoaded, getClients, getClient, addClient, updateClient, deleteClients } from '@/lib/db'
+import { provisionClient, deprovisionClient, isMakeConfigured } from '@/lib/make-api'
 
 export async function GET() {
   await ensureLoaded()
@@ -13,6 +14,16 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Nom et prénom requis' }, { status: 400 })
   }
   const client = await addClient(data)
+
+  // Auto-provision Make.com scenario if configured
+  if (isMakeConfigured()) {
+    const makeData = await provisionClient(`${data.firstName} ${data.lastName}`)
+    if (makeData) {
+      await updateClient(client.id, makeData)
+      Object.assign(client, makeData)
+    }
+  }
+
   return NextResponse.json(client)
 }
 
@@ -29,6 +40,15 @@ export async function DELETE(request) {
   await ensureLoaded()
   const { ids } = await request.json()
   if (!ids?.length) return NextResponse.json({ error: 'IDs requis' }, { status: 400 })
+
+  // Deprovision Make.com scenarios before deleting
+  if (isMakeConfigured()) {
+    for (const id of ids) {
+      const client = getClient(id)
+      if (client) await deprovisionClient(client)
+    }
+  }
+
   await deleteClients(ids)
   return NextResponse.json({ ok: true })
 }

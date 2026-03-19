@@ -11,6 +11,7 @@ export default function ClientNav() {
   const { loginId } = useParams()
   const [client, setClient] = useState(null)
   const [theme, setTheme] = useState('dark')
+  const [notifications, setNotifications] = useState(0)
 
   const base = `/portal/${loginId}`
 
@@ -61,6 +62,16 @@ export default function ClientNav() {
       .catch(() => {})
     const saved = localStorage.getItem('htic-theme') || 'dark'
     setTheme(saved)
+
+    // SSE notifications
+    let es
+    try {
+      es = new EventSource('/api/events')
+      es.addEventListener('article_ready', () => {
+        setNotifications(n => n + 1)
+      })
+    } catch {}
+    return () => { if (es) es.close() }
   }, [])
 
   function cycleTheme() {
@@ -139,6 +150,7 @@ export default function ClientNav() {
             <a
               key={link.href}
               href={link.href}
+              onClick={() => { if (link.href === `${base}/articles` && notifications > 0) setNotifications(0) }}
               style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '9px 10px', borderRadius: '8px',
@@ -150,6 +162,15 @@ export default function ClientNav() {
             >
               <span style={{ opacity: active ? 1 : 0.6 }}>{link.icon}</span>
               {link.label}
+              {link.href === `${base}/articles` && notifications > 0 && (
+                <span style={{
+                  marginLeft: 'auto', background: 'var(--accent)', color: '#fff',
+                  fontSize: '10px', fontWeight: '700', borderRadius: '10px',
+                  padding: '1px 6px', minWidth: '18px', textAlign: 'center',
+                }}>
+                  {notifications}
+                </span>
+              )}
             </a>
           )
         })}
