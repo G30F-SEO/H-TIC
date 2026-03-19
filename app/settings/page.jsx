@@ -29,6 +29,8 @@ export default function SettingsPage() {
   const [dbMessage, setDbMessage] = useState('')
   const [dbSql, setDbSql] = useState(null)
   const [resetting, setResetting] = useState(false)
+  const [makeStatus, setMakeStatus] = useState('idle')
+  const [makeMessage, setMakeMessage] = useState('')
 
   // Detect callback URL from current domain
   useEffect(() => {
@@ -337,6 +339,96 @@ export default function SettingsPage() {
             >
               {resetting ? 'Reinitialisation...' : 'Reinitialiser les lignes bloquees'}
             </button>
+          </div>
+
+          {/* Make.com API Auto-provisioning */}
+          <div className="card" style={{ marginBottom: '12px' }}>
+            <div className="section-title">Make.com API (Auto-provisioning)</div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '14px' }}>
+              Configurez l'API Make.com pour <strong style={{ color: 'var(--text-primary)' }}>auto-provisionner un scenario Make par client</strong>.
+              A la creation d'un client, un scenario est automatiquement clone et un webhook dedie lui est attribue.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <button
+                onClick={async () => {
+                  setMakeStatus('loading')
+                  try {
+                    const res = await fetch('/api/make/test')
+                    const data = await res.json()
+                    if (!data.configured) {
+                      setMakeStatus('error')
+                      setMakeMessage(data.error || 'Non configure')
+                    } else if (data.ok) {
+                      setMakeStatus('ok')
+                      setMakeMessage(`Connecte — ${data.teamName || 'OK'}`)
+                    } else {
+                      setMakeStatus('error')
+                      setMakeMessage(data.error || 'Erreur')
+                    }
+                  } catch {
+                    setMakeStatus('error')
+                    setMakeMessage('Erreur reseau')
+                  }
+                }}
+                className="btn btn-secondary btn-sm"
+                disabled={makeStatus === 'loading'}
+              >
+                {makeStatus === 'loading' ? 'Test...' : 'Tester la connexion API'}
+              </button>
+              <StatusDot status={makeStatus} />
+              {makeMessage && <span style={{ fontSize: '12px', color: makeStatus === 'ok' ? 'var(--success)' : 'var(--text-muted)' }}>{makeMessage}</span>}
+            </div>
+
+            <div style={{
+              background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px',
+              padding: '14px', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.7',
+            }}>
+              <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '10px', fontSize: '13px' }}>
+                Variables d'environnement requises
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {[
+                  { key: 'MAKE_API_TOKEN', desc: 'Token API Make.com' },
+                  { key: 'MAKE_TEAM_ID', desc: 'ID de votre equipe Make' },
+                  { key: 'MAKE_ZONE', desc: 'Zone Make (eu1, eu2, us1, us2) — defaut: eu2' },
+                  { key: 'MAKE_TEMPLATE_SCENARIO_ID', desc: 'ID du scenario template a cloner' },
+                  { key: 'MAKE_TEMPLATE_HOOK_ID', desc: 'ID du webhook dans le scenario template (optionnel)' },
+                ].map(v => (
+                  <div key={v.key} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <code style={{
+                      fontFamily: 'var(--font-mono)', fontSize: '11px', background: 'var(--accent-soft)',
+                      padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap', color: 'var(--accent)',
+                    }}>{v.key}</code>
+                    <span>{v.desc}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px', fontSize: '13px' }}>
+                Comment obtenir ces informations
+              </div>
+              <ol style={{ paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <li>
+                  <strong style={{ color: 'var(--text-primary)' }}>MAKE_API_TOKEN</strong> : Allez sur{' '}
+                  <span style={{ color: 'var(--accent)' }}>make.com → Profile (icone en bas a gauche) → API</span>, puis cliquez "Add API token".
+                  Donnez les permissions "scenarios" et "hooks".
+                </li>
+                <li>
+                  <strong style={{ color: 'var(--text-primary)' }}>MAKE_TEAM_ID</strong> : Regardez l'URL quand vous etes dans votre organisation Make.
+                  L'URL ressemble a <code style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>https://eu2.make.com/12345/...</code> — le nombre apres le domaine est votre Team ID.
+                </li>
+                <li>
+                  <strong style={{ color: 'var(--text-primary)' }}>MAKE_ZONE</strong> : Visible dans l'URL de Make.com. Par exemple{' '}
+                  <code style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>eu2</code>.make.com → la zone est "eu2".
+                </li>
+                <li>
+                  <strong style={{ color: 'var(--text-primary)' }}>MAKE_TEMPLATE_SCENARIO_ID</strong> : Ouvrez votre scenario template dans Make,
+                  l'ID est le nombre dans l'URL :{' '}
+                  <code style={{ fontFamily: 'var(--font-mono)', fontSize: '11px' }}>.../scenarios/987654/...</code> → ID = 987654.
+                </li>
+              </ol>
+            </div>
           </div>
 
           {/* Supabase persistence */}

@@ -12,6 +12,7 @@ export default function ClientsPage() {
   const [alert, setAlert] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
   const [search, setSearch] = useState('')
+  const [provisioning, setProvisioning] = useState(null)
 
   async function load() {
     try {
@@ -96,6 +97,28 @@ export default function ClientsPage() {
       body: JSON.stringify({ ids: [id] }),
     })
     load()
+  }
+
+  async function reprovision(clientId) {
+    setProvisioning(clientId)
+    try {
+      const res = await fetch('/api/clients/provision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAlert({ type: 'success', msg: 'Scenario Make.com provisionne avec succes !' })
+        load()
+      } else {
+        setAlert({ type: 'error', msg: data.error || 'Erreur de provisioning' })
+      }
+    } catch {
+      setAlert({ type: 'error', msg: 'Erreur reseau.' })
+    } finally {
+      setProvisioning(null)
+    }
   }
 
   function copyToClipboard(text, id) {
@@ -225,6 +248,7 @@ export default function ClientsPage() {
                     <th>Login ID</th>
                     <th>Mot de passe</th>
                     <th>URL portail</th>
+                    <th>Make.com</th>
                     <th>Statut</th>
                     <th style={{ width: '100px' }}>Actions</th>
                   </tr>
@@ -276,6 +300,22 @@ export default function ClientsPage() {
                         >
                           {copiedId === 'url-' + client.id ? 'Copie !' : 'Copier l\'URL'}
                         </button>
+                      </td>
+                      <td>
+                        {client.makeWebhookUrl ? (
+                          <span className="badge badge-success" style={{ fontSize: '11px' }}>Actif</span>
+                        ) : client.webhookUrl ? (
+                          <span className="badge badge-blue" style={{ fontSize: '11px' }}>Manuel</span>
+                        ) : (
+                          <button
+                            onClick={() => reprovision(client.id)}
+                            disabled={provisioning === client.id}
+                            className="btn btn-sm btn-secondary"
+                            style={{ fontSize: '11px', padding: '2px 8px', opacity: provisioning === client.id ? 0.5 : 1 }}
+                          >
+                            {provisioning === client.id ? '...' : 'Provisionner'}
+                          </button>
+                        )}
                       </td>
                       <td>
                         <button

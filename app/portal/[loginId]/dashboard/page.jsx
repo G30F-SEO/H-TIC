@@ -23,6 +23,17 @@ const WORD_COUNTS = [
   { value: '2000', label: '2000 mots — complet' },
 ]
 
+const SEO_INTENTS = [
+  { value: '', label: 'Selectionnez une intention...' },
+  { value: 'Rassurer et convertir', label: 'Rassurer et convertir' },
+  { value: 'Informer et eduquer', label: 'Informer et eduquer' },
+  { value: 'Comparer des solutions', label: 'Comparer des solutions' },
+  { value: 'Guider un choix', label: 'Guider un choix' },
+  { value: 'Resoudre un probleme', label: 'Resoudre un probleme' },
+  { value: 'Presenter une nouveaute', label: 'Presenter une nouveaute' },
+  { value: 'custom', label: 'Personnalise...' },
+]
+
 function Field({ label, required, hint, children }) {
   return (
     <div className="field">
@@ -196,7 +207,18 @@ export default function ClientDashboard() {
             )}
             <div style={{ ...s.grid2, marginBottom: '12px' }}>
               <Field label="Intention SEO">
-                <input value={form.intent} onChange={handle('intent')} placeholder="ex : Rassurer et convertir..." />
+                <select
+                  value={SEO_INTENTS.some(i => i.value === form.intent) ? form.intent : 'custom'}
+                  onChange={e => {
+                    if (e.target.value === 'custom') set('intent', '')
+                    else set('intent', e.target.value)
+                  }}
+                >
+                  {SEO_INTENTS.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
+                </select>
+                {!SEO_INTENTS.some(i => i.value === form.intent && i.value !== 'custom' && i.value !== '') && form.intent !== '' && (
+                  <input value={form.intent} onChange={handle('intent')} placeholder="Saisissez votre intention SEO..." style={{ marginTop: '6px' }} />
+                )}
               </Field>
               <Field label="H1 suggere">
                 <input value={form.h1} onChange={handle('h1')} placeholder="ex : Pose de carrelage a Pau" />
@@ -253,7 +275,7 @@ export default function ClientDashboard() {
           <div className="card" style={s.section}>
             <div className="section-title">Instructions supplementaires</div>
             <Field label="Instructions">
-              <textarea value={form.extra} onChange={handle('extra')} placeholder="Ex : eviter le mot 'innovant', inclure une FAQ de 4 questions..." style={{ minHeight: '70px' }} />
+              <textarea value={form.extra} onChange={handle('extra')} placeholder="Ex : eviter le mot 'innovant', inclure une FAQ de 4 questions..." style={{ minHeight: '70px', resize: 'vertical' }} />
             </Field>
           </div>
 

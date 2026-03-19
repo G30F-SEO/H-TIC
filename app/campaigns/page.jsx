@@ -19,6 +19,7 @@ const STATUS_MAP = {
   draft: { label: 'Brouillon', color: 'var(--text-muted)', bg: 'rgba(255,255,255,0.05)' },
   queued: { label: 'En file', color: 'var(--warning)', bg: 'var(--warning-soft)' },
   processing: { label: 'En cours', color: 'var(--blue)', bg: 'var(--blue-soft)' },
+  scheduled: { label: 'Planifie', color: 'var(--accent)', bg: 'var(--accent-soft)' },
   done: { label: 'Termine', color: 'var(--success)', bg: 'var(--success-soft)' },
   error: { label: 'Erreur', color: 'var(--danger)', bg: 'var(--danger-soft)' },
 }
@@ -37,7 +38,7 @@ const EMPTY_INFO = {
 
 const EMPTY_LINE = {
   url: '', city: '', keyword_main: '', keywords_sec: '',
-  intent: '', h1: '', extra: '',
+  intent: '', h1: '', extra: '', scheduledAt: '',
   product_name: '', product_price: '', product_ref: '',
   cat_product: '', cat_ref: '', cat_specs: '',
 }
@@ -68,7 +69,7 @@ function StatusBadge({ status }) {
 // =====================
 // PHASE 1: Campaign list
 // =====================
-function CampaignList({ campaigns, onSelect, onCreateNew, loading }) {
+function CampaignList({ campaigns, onSelect, onCreateNew, loading, templates, onShowTemplates }) {
   if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Chargement...</div>
 
   return (
@@ -80,12 +81,30 @@ function CampaignList({ campaigns, onSelect, onCreateNew, loading }) {
             Creez une campagne, definissez la base de redaction, puis ajoutez vos lignes.
           </p>
         </div>
-        <button onClick={onCreateNew} className="btn btn-primary btn-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Nouvelle campagne
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a
+            href="/api/campaigns/export"
+            download
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            CSV
+          </a>
+          {templates.length > 0 && (
+            <button onClick={onShowTemplates} className="btn btn-secondary btn-sm">
+              Depuis template
+            </button>
+          )}
+          <button onClick={onCreateNew} className="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nouvelle campagne
+          </button>
+        </div>
       </div>
 
       {campaigns.length === 0 ? (
@@ -146,7 +165,7 @@ function CampaignList({ campaigns, onSelect, onCreateNew, loading }) {
 // ==================================
 // PHASE 2: Campaign detail (info + lines)
 // ==================================
-function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert }) {
+function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert, onSaveAsTemplate }) {
   const [campaign, setCampaign] = useState(initialCampaign)
   const [phase, setPhase] = useState('info') // 'info' or 'lines'
   const [infoTab, setInfoTab] = useState('info')
@@ -286,7 +305,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
     setEditForm({
       url: line.url || '', city: line.city || '', keyword_main: line.keyword_main || '',
       keywords_sec: line.keywords_sec || '', intent: line.intent || '', h1: line.h1 || '',
-      extra: line.extra || '',
+      extra: line.extra || '', scheduledAt: line.scheduledAt || '',
       product_name: line.product_name || '', product_price: line.product_price || '', product_ref: line.product_ref || '',
       cat_product: line.cat_product || '', cat_ref: line.cat_ref || '', cat_specs: line.cat_specs || '',
     })
@@ -298,12 +317,18 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
 
   async function saveLine(lineId) {
     try {
+      const saveData = { ...editForm }
+      // Auto-set status to 'scheduled' if scheduledAt is set and line is still draft
+      const currentLine = lines.find(l => l.id === lineId)
+      if (saveData.scheduledAt && (!currentLine?.status || currentLine.status === 'draft')) {
+        saveData.status = 'scheduled'
+      }
       await fetch(`/api/campaigns/${campaign.id}/lines`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lineId, ...editForm }),
+        body: JSON.stringify({ lineId, ...saveData }),
       })
-      setLines(prev => prev.map(l => l.id === lineId ? { ...l, ...editForm } : l))
+      setLines(prev => prev.map(l => l.id === lineId ? { ...l, ...saveData } : l))
       setEditLine(null)
     } catch {
       showAlert('Erreur sauvegarde', 'error')
@@ -533,6 +558,9 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
             {branchInfo.label} · {meta.sector || '—'} · Cree le {new Date(campaign.createdAt).toLocaleDateString('fr')}
           </p>
         </div>
+        <button onClick={() => onSaveAsTemplate({ ...campaign, lines })} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '13px' }}>
+          Template
+        </button>
         <button onClick={exportCampaignJson} className="btn btn-secondary btn-sm" style={{ padding: '6px 12px', fontSize: '13px' }}>
           Exporter JSON
         </button>
@@ -922,7 +950,7 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                                   <input value={editForm.intent} onChange={e => setEditForm(f => ({ ...f, intent: e.target.value }))} placeholder="But de la page" />
                                 </div>
                               </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                                 <div className="field">
                                   <label className="label">H1 suggere</label>
                                   <input value={editForm.h1} onChange={e => setEditForm(f => ({ ...f, h1: e.target.value }))} placeholder="ex : Pose de carrelage a Pau" />
@@ -930,6 +958,14 @@ function CampaignDetail({ campaign: initialCampaign, onBack, onUpdate, showAlert
                                 <div className="field">
                                   <label className="label">Instructions supplementaires</label>
                                   <input value={editForm.extra} onChange={e => setEditForm(f => ({ ...f, extra: e.target.value }))} placeholder="Instructions specifiques..." />
+                                </div>
+                                <div className="field">
+                                  <label className="label">Planifier le lancement</label>
+                                  <input
+                                    type="datetime-local"
+                                    value={editForm.scheduledAt ? editForm.scheduledAt.slice(0, 16) : ''}
+                                    onChange={e => setEditForm(f => ({ ...f, scheduledAt: e.target.value ? new Date(e.target.value).toISOString() : '' }))}
+                                  />
                                 </div>
                               </div>
                               {meta.branch === 'ecommerce' && (
@@ -971,6 +1007,8 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCampaign, setSelectedCampaign] = useState(null)
   const [alert, setAlert] = useState(null)
+  const [templates, setTemplates] = useState([])
+  const [showTemplates, setShowTemplates] = useState(false)
 
   function showAlert(msg, type = 'success') {
     setAlert({ msg, type })
@@ -986,7 +1024,80 @@ export default function CampaignsPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadCampaigns() }, [])
+  useEffect(() => { loadCampaigns(); loadTemplates() }, [])
+
+  async function loadTemplates() {
+    try {
+      const res = await fetch('/api/templates')
+      const data = await res.json()
+      setTemplates(Array.isArray(data) ? data : [])
+    } catch {}
+  }
+
+  async function saveAsTemplate(campaign) {
+    const name = prompt('Nom du template :', campaign.name + ' (template)')
+    if (!name) return
+    try {
+      await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...campaign, name }),
+      })
+      showAlert('Template sauvegarde !')
+      loadTemplates()
+    } catch {
+      showAlert('Erreur sauvegarde template', 'error')
+    }
+  }
+
+  async function createFromTemplate(template) {
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: template.name.replace(' (template)', ''),
+          branch: template.branch,
+          sector: template.sector,
+          tone: template.tone,
+          word_count: template.word_count,
+          lang: template.lang,
+          description: template.description,
+          info: template.info,
+        }),
+      })
+      const camp = await res.json()
+      // Add template lines
+      for (const line of (template.lines || [])) {
+        await fetch(`/api/campaigns/${camp.id}/lines`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(line),
+        })
+      }
+      // Reload to get full campaign with lines
+      const fullRes = await fetch(`/api/campaigns/${camp.id}`)
+      const fullCamp = await fullRes.json()
+      setCampaigns(prev => [...prev, fullCamp])
+      setSelectedCampaign(fullCamp)
+      setShowTemplates(false)
+      showAlert('Campagne creee depuis template !')
+    } catch {
+      showAlert('Erreur creation depuis template', 'error')
+    }
+  }
+
+  async function deleteTemplate(id) {
+    if (!confirm('Supprimer ce template ?')) return
+    try {
+      await fetch('/api/templates', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      loadTemplates()
+    } catch {}
+  }
 
   async function createNewCampaign() {
     try {
@@ -1039,12 +1150,49 @@ export default function CampaignsPage() {
           </div>
         )}
 
+        {showTemplates && (
+          <div className="card fade-in" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span className="section-title" style={{ marginBottom: 0 }}>Templates disponibles</span>
+              <button onClick={() => setShowTemplates(false)} className="btn btn-secondary btn-sm">Fermer</button>
+            </div>
+            {templates.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Aucun template. Sauvegardez une campagne comme template depuis sa page detail.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {templates.map(tpl => (
+                  <div key={tpl.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--border)',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{tpl.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {tpl.branch} · {tpl.lines?.length || 0} lignes
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => createFromTemplate(tpl)} className="btn btn-primary btn-sm">Utiliser</button>
+                      <button onClick={() => deleteTemplate(tpl.id)} className="btn btn-danger btn-sm">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14H7L5 6"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {selectedCampaign ? (
           <CampaignDetail
             campaign={selectedCampaign}
             onBack={() => { setSelectedCampaign(null); loadCampaigns() }}
             onUpdate={handleCampaignUpdate}
             showAlert={showAlert}
+            onSaveAsTemplate={saveAsTemplate}
           />
         ) : (
           <CampaignList
@@ -1052,6 +1200,8 @@ export default function CampaignsPage() {
             loading={loading}
             onSelect={setSelectedCampaign}
             onCreateNew={createNewCampaign}
+            templates={templates}
+            onShowTemplates={() => setShowTemplates(!showTemplates)}
           />
         )}
       </main>

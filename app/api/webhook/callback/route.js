@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getCampaign, updateLine, addHistoryEntry, saveArticle, ensureLoaded } from '@/lib/db'
 import { getWebhookUrl } from '@/lib/webhooks'
 import { logger } from '@/lib/logger'
+import { broadcast } from '@/lib/events'
 
 // Webhook callback from Make.com
 export async function POST(request) {
@@ -57,6 +58,15 @@ export async function POST(request) {
 
       logger.success(`Article genere pour "${line?.keyword_main || lineId}"`, {
         campaignId, lineId, articleId: article.id,
+      })
+
+      // Broadcast SSE notification
+      broadcast('article_ready', {
+        articleId: article.id,
+        keyword: line?.keyword_main || '',
+        company: campaign?.name || '',
+        campaignId,
+        lineId,
       })
     }
 
