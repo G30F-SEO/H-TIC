@@ -73,10 +73,10 @@ export default function ClientNav() {
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 8px', marginBottom: '16px' }}>
-        <img src="/logo-htic.png" alt="H-TIC" height={32} style={{ objectFit: 'contain' }} />
+        <img src="/logo-htic.png" alt="H-TIC" width={32} height={32} style={{ objectFit: 'contain', maxWidth: '32px', maxHeight: '32px' }} />
         <div>
           <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)', lineHeight: 1.2 }}>H-TIC</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Espace Client</div>
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Launcher</div>
         </div>
       </div>
 

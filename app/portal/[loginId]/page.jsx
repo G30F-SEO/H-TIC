@@ -53,8 +53,9 @@ export default function ClientLoginPage() {
           <img
             src="/logo-htic.png"
             alt="H-TIC"
+            width={120}
             height={56}
-            style={{ marginBottom: '16px', objectFit: 'contain' }}
+            style={{ marginBottom: '16px', objectFit: 'contain', maxWidth: '120px' }}
           />
           <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '6px' }}>
             Espace Client
@@ -126,24 +127,22 @@ export default function ClientLoginPage() {
 
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
         padding: '14px',
         borderTop: '1px solid var(--border)',
         background: 'var(--bg)',
+        fontSize: '12px', color: 'var(--text-muted)',
       }}>
+        <span>&copy; {new Date().getFullYear()}</span>
         <a
           href="https://www.h-tic.fr/"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            color: 'var(--text-muted)', textDecoration: 'none',
-            fontSize: '12px',
-          }}
+          style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: '600' }}
         >
-          <img src="/logo-htic.png" alt="H-TIC" height={18} style={{ objectFit: 'contain', opacity: 0.7 }} />
-          <span>h-tic.fr</span>
+          H-TIC
         </a>
+        <span>— Digital 360&deg;</span>
       </div>
     </div>
   )
