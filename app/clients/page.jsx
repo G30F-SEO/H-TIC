@@ -68,7 +68,12 @@ export default function ClientsPage() {
         })
         if (res.ok) {
           const client = await res.json()
-          setAlert({ type: 'success', msg: `Client cree ! Login: ${client.loginId} — Mot de passe: ${client.password}` })
+          const provMsg = client.provisionError
+            ? ` (Provisioning Make.com echoue: ${client.provisionError})`
+            : client.makeWebhookUrl
+              ? ' — Webhook Make.com cree automatiquement'
+              : ''
+          setAlert({ type: client.provisionError ? 'error' : 'success', msg: `Client cree ! Login: ${client.loginId} — Mot de passe: ${client.password}${provMsg}` })
           resetForm()
           load()
         }
@@ -205,7 +210,17 @@ export default function ClientsPage() {
                 </div>
                 <div className="field" style={{ marginBottom: '16px' }}>
                   <label className="label">URL Webhook Make.com (dedie au client)</label>
-                  <input value={form.webhookUrl} onChange={e => setForm(f => ({ ...f, webhookUrl: e.target.value }))} placeholder="https://hook.eu2.make.com/..." />
+                  {editingId && clients.find(c => c.id === editingId)?.makeWebhookUrl ? (
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', padding: '8px 12px', background: 'var(--bg-surface)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                      <span className="badge badge-success" style={{ fontSize: '10px', marginRight: '8px' }}>Auto</span>
+                      {clients.find(c => c.id === editingId).makeWebhookUrl}
+                    </div>
+                  ) : (
+                    <input value={form.webhookUrl} onChange={e => setForm(f => ({ ...f, webhookUrl: e.target.value }))} placeholder="https://hook.eu2.make.com/..." />
+                  )}
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    {editingId ? 'Se remplit automatiquement via le provisioning Make.com' : 'Sera cree automatiquement si Make.com est configure'}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -303,9 +318,23 @@ export default function ClientsPage() {
                       </td>
                       <td>
                         {client.makeWebhookUrl ? (
-                          <span className="badge badge-success" style={{ fontSize: '11px' }}>Actif</span>
+                          <button
+                            onClick={() => copyToClipboard(client.makeWebhookUrl, 'wh-' + client.id)}
+                            className="badge badge-success"
+                            style={{ fontSize: '11px', cursor: 'pointer', border: 'none' }}
+                            title={client.makeWebhookUrl}
+                          >
+                            {copiedId === 'wh-' + client.id ? 'Copie !' : 'Actif'}
+                          </button>
                         ) : client.webhookUrl ? (
-                          <span className="badge badge-blue" style={{ fontSize: '11px' }}>Manuel</span>
+                          <button
+                            onClick={() => copyToClipboard(client.webhookUrl, 'wh-' + client.id)}
+                            className="badge badge-blue"
+                            style={{ fontSize: '11px', cursor: 'pointer', border: 'none' }}
+                            title={client.webhookUrl}
+                          >
+                            {copiedId === 'wh-' + client.id ? 'Copie !' : 'Manuel'}
+                          </button>
                         ) : (
                           <button
                             onClick={() => reprovision(client.id)}

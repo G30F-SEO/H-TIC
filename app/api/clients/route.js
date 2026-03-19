@@ -18,9 +18,12 @@ export async function POST(request) {
   // Auto-provision Make.com scenario if configured
   if (isMakeConfigured()) {
     const makeData = await provisionClient(`${data.firstName} ${data.lastName}`)
-    if (makeData) {
+    if (makeData && !makeData.error) {
       await updateClient(client.id, makeData)
       Object.assign(client, makeData)
+    } else if (makeData?.error) {
+      console.error('[clients] Auto-provision failed:', makeData.error)
+      client.provisionError = makeData.error
     }
   }
 
