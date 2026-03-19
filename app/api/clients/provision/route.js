@@ -20,6 +20,9 @@ export async function POST(request) {
 
   // Reprovision
   const makeData = await provisionClient(`${client.firstName} ${client.lastName}`)
+  if (makeData?.error) {
+    return NextResponse.json({ error: `Echec du provisioning: ${makeData.error}` }, { status: 500 })
+  }
   if (!makeData) {
     return NextResponse.json({ error: 'Echec du provisioning Make.com' }, { status: 500 })
   }
