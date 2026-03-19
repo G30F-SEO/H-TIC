@@ -51,8 +51,9 @@ export default function LoginPage() {
           <img
             src="/logo-htic.png"
             alt="H-TIC"
+            width={148}
             height={56}
-            style={{ marginBottom: '16px', objectFit: 'contain' }}
+            style={{ marginBottom: '16px', objectFit: 'contain', maxWidth: '148px', maxHeight: '56px', display: 'inline-block' }}
           />
           <div style={{ fontSize: '20px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '6px' }}>
             H-TIC Launcher
@@ -116,29 +117,22 @@ export default function LoginPage() {
       {/* Footer */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
         padding: '14px',
         borderTop: '1px solid var(--border)',
         background: 'var(--bg)',
+        fontSize: '12px', color: 'var(--text-muted)',
       }}>
+        <span>&copy; {new Date().getFullYear()}</span>
         <a
           href="https://www.h-tic.fr/"
           target="_blank"
           rel="noopener noreferrer"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            color: 'var(--text-muted)', textDecoration: 'none',
-            fontSize: '12px', transition: 'color 0.15s',
-          }}
+          style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: '600' }}
         >
-          <img src="/logo-htic.png" alt="H-TIC" height={18} style={{ objectFit: 'contain', opacity: 0.7 }} />
-          <span>h-tic.fr</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.5 }}>
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
+          H-TIC
         </a>
+        <span>— Digital 360&deg;</span>
       </div>
     </div>
   )

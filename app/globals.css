@@ -31,6 +31,70 @@
   --green-soft: rgba(34,197,94,0.12);
   --amber: #f59e0b;
   --amber-soft: rgba(245,158,11,0.12);
+  --chart-line: #6c63ff;
+  --chart-fill: rgba(108,99,255,0.15);
+}
+
+/* ===== Light theme ===== */
+[data-theme="light"] {
+  --bg: #f4f5f7;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f0f1f4;
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a65;
+  --text-muted: #8888a0;
+  --accent: #5a52d5;
+  --accent-soft: rgba(90,82,213,0.1);
+  --accent-border: rgba(90,82,213,0.35);
+  --success: #16a34a;
+  --success-soft: rgba(22,163,74,0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220,38,38,0.08);
+  --warning: #d97706;
+  --warning-soft: rgba(217,119,6,0.08);
+  --blue: #2563eb;
+  --blue-soft: rgba(37,99,235,0.1);
+  --green: #16a34a;
+  --green-soft: rgba(22,163,74,0.1);
+  --amber: #d97706;
+  --amber-soft: rgba(217,119,6,0.1);
+  --chart-line: #5a52d5;
+  --chart-fill: rgba(90,82,213,0.12);
+}
+
+/* ===== Auto theme — follows OS preference ===== */
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    --bg: #f4f5f7;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f0f1f4;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.15);
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a65;
+    --text-muted: #8888a0;
+    --accent: #5a52d5;
+    --accent-soft: rgba(90,82,213,0.1);
+    --accent-border: rgba(90,82,213,0.35);
+    --success: #16a34a;
+    --success-soft: rgba(22,163,74,0.1);
+    --danger: #dc2626;
+    --danger-soft: rgba(220,38,38,0.08);
+    --warning: #d97706;
+    --warning-soft: rgba(217,119,6,0.08);
+    --blue: #2563eb;
+    --blue-soft: rgba(37,99,235,0.1);
+    --green: #16a34a;
+    --green-soft: rgba(22,163,74,0.1);
+    --amber: #d97706;
+    --amber-soft: rgba(217,119,6,0.1);
+    --chart-line: #5a52d5;
+    --chart-fill: rgba(90,82,213,0.12);
+  }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -93,6 +157,18 @@ button { font-family: var(--font-sans); cursor: pointer; border: none; }
   padding: 20px;
 }
 
+[data-theme="light"] .card,
+[data-theme="light"] .table-wrap {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] .card,
+  [data-theme="auto"] .table-wrap {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  }
+}
+
 .label {
   display: block;
   font-size: 12px;
@@ -121,7 +197,7 @@ button { font-family: var(--font-sans); cursor: pointer; border: none; }
 .badge-amber { background: var(--amber-soft); color: var(--amber); }
 .badge-success { background: var(--success-soft); color: var(--success); }
 .badge-danger { background: var(--danger-soft); color: var(--danger); }
-.badge-muted { background: rgba(255,255,255,0.05); color: var(--text-secondary); }
+.badge-muted { background: var(--border); color: var(--text-secondary); }
 
 .section-title {
   font-size: 11px;
@@ -290,7 +366,7 @@ button { font-family: var(--font-sans); cursor: pointer; border: none; }
   user-select: none;
 }
 
-.section-toggle:hover { background: rgba(255,255,255,0.03); }
+.section-toggle:hover { background: var(--border); }
 
 .section-toggle input[type="checkbox"] {
   width: 14px;
@@ -306,7 +382,7 @@ button { font-family: var(--font-sans); cursor: pointer; border: none; }
   border-radius: 20px;
   font-size: 11px;
   font-weight: 500;
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-card);
   color: var(--text-muted);
   border: 1px solid var(--border);
   cursor: pointer;
